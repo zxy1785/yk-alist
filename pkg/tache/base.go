@@ -47,6 +47,9 @@ func (b *Base) SetID(id string) {
 }
 
 func (b *Base) SetErr(err error) {
+	if err == nil {
+		return
+	}
 	b.err = err
 	b.Error = err.Error()
 	b.Persist()
@@ -96,16 +99,16 @@ func (b *Base) SetPersist(persist func()) {
 	b.persist = persist
 }
 
-func (b *Base) OnFailed() {
+// func (b *Base) OnFailed() {
 
-}
+// }
 
-func (b *Base) OnSucceeded() {
+// func (b *Base) OnSucceeded() {
 
-}
+// }
 
-func (b *Base) OnBeforeRetry() {
+// func (b *Base) OnBeforeRetry() {
 
-}
+// }
 
 var _ TaskBase = (*Base)(nil)
