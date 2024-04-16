@@ -8,7 +8,7 @@ import (
 type Addition struct {
 	driver.RootPath
 	Address string `json:"address" required:"true"`
-	APIKey  string `json:"apikey" required:"true"`
+	APIKey  string `json:"password" required:"true"`
 }
 
 var config = driver.Config{
