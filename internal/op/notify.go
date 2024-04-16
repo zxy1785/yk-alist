@@ -11,6 +11,7 @@ import (
 
 	"github.com/alist-org/alist/v3/internal/conf"
 	"github.com/alist-org/alist/v3/internal/model"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -20,21 +21,28 @@ type SendNotifyPlatform struct{}
 
 // 注意映射方法名必需大写要不然找不到
 func (e SendNotifyPlatform) Bark(body string, title string, content string) (bool, error) {
-	m := make(map[string]interface{})
-	err := json.Unmarshal([]byte(body), &m)
-	barkPush, barkIcon, barkSound, barkGroup, barkLevel, barkUrl := m["barkPush"].(string), m["barkIcon"].(string), m["barkSound"].(string), m["barkGroup"].(string), m["barkLevel"].(string), m["barkUrl"].(string)
-
-	if !strings.HasPrefix(barkPush, "http") {
-		barkPush = fmt.Sprintf("https://api.day.app/%s", barkPush)
+	var bark model.Bark
+	err := json.Unmarshal([]byte(body), &bark)
+	if err != nil {
+		log.Errorln("无法解析配置文件")
+		return false, errors.Errorf("无法解析配置文件")
 	}
 
+	if len(bark.BarkPush) < 2 {
+		log.Errorln("请正确设置BarkPush")
+		return false, errors.Errorf("请正确设置BarkPush")
+	}
+
+	if !strings.HasPrefix(bark.BarkPush, "http") {
+		bark.BarkPush = fmt.Sprintf("https://api.day.app/%s", bark.BarkPush)
+	}
 	urlValues := url.Values{}
-	urlValues.Set("icon", barkIcon)
-	urlValues.Set("sound", barkSound)
-	urlValues.Set("group", barkGroup)
-	urlValues.Set("level", barkLevel)
-	urlValues.Set("url", barkUrl)
-	url := fmt.Sprintf("%s/%s/%s?%s", barkPush, url.QueryEscape(title), url.QueryEscape(content), urlValues.Encode())
+	urlValues.Set("icon", bark.BarkIcon)
+	urlValues.Set("sound", bark.BarkSound)
+	urlValues.Set("group", bark.BarkGroup)
+	urlValues.Set("level", bark.BarkLevel)
+	urlValues.Set("url", bark.BarkUrl)
+	url := fmt.Sprintf("%s/%s/%s?%s", bark.BarkPush, url.QueryEscape(title), url.QueryEscape(content), urlValues.Encode())
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -327,6 +335,90 @@ func (e SendNotifyPlatform) WeWorkBot(body string, title string, content string)
 	}
 }
 
+// 注意映射方法名必需大写要不然找不到
+func (e SendNotifyPlatform) Webhook(body string, title string, content string) (bool, error) {
+	var webhook model.Webhook
+	err := json.Unmarshal([]byte(body), &webhook)
+
+	if err != nil {
+		log.Errorln("无法解析配置文件")
+		return false, errors.New("无法解析配置文件")
+	}
+
+	if !strings.Contains(webhook.WebhookUrl, "$title") && !strings.Contains(webhook.WebhookBody, "$title") {
+		return false, errors.New("URL 或者 Body 中必须包含 $title")
+	}
+
+	headers := make(map[string]string)
+	if len(webhook.WebhookHeaders) > 2 {
+		// 按换行符分割字符串
+		headerLines := strings.Split(webhook.WebhookHeaders, "\n")
+		// 遍历每一行
+		for _, line := range headerLines {
+			// 忽略空行
+			if line == "" {
+				continue
+			}
+			// 按冒号分割键值对
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) != 2 {
+				return false, fmt.Errorf("malformed header: %s", line)
+			}
+			// 去除键和值两端的空白字符
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			// 将键值对添加到 map 中
+			headers[key] = value
+		}
+	}
+
+	targetBody := strings.ReplaceAll(strings.ReplaceAll(webhook.WebhookBody, "$title", title), "$content", content)
+	formattedBody := make(map[string]interface{})
+	switch webhook.WebhookContentType {
+	case "application/json":
+		formattedBody["json"] = targetBody
+	case "multipart/form-data":
+		formattedBody["form"] = targetBody
+	case "application/x-www-form-urlencoded", "text/plain":
+		formattedBody["body"] = targetBody
+	}
+	bodyParams, err := json.Marshal(formattedBody)
+	if err != nil {
+		log.Errorln("WebhookBody解析失败")
+		return false, errors.New("WebhookBody解析失败")
+	}
+
+	formatURL := strings.ReplaceAll(strings.ReplaceAll(webhook.WebhookUrl, "$title", url.QueryEscape(title)), "$content", url.QueryEscape(content))
+	client := &http.Client{}
+
+	req, err := http.NewRequest(webhook.WebhookMethod, formatURL, strings.NewReader(string(bodyParams)))
+	if err != nil {
+		log.Errorln("Webhook创建请求失败")
+		return false, err
+	}
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	if err != nil {
+		log.Error("通知发送失败")
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		return true, nil
+	} else {
+		return false, fmt.Errorf("Unexpected status code: %d", resp.StatusCode)
+	}
+}
+
 var platform model.SettingItem
 
 func Notify(title string, content string) {
@@ -338,6 +430,11 @@ func Notify(title string, content string) {
 	}
 	if enable.Value != "true" && enable.Value != "1" {
 		log.Debug("未开启消息推送功能")
+		return
+	}
+
+	if !conf.Conf.Notify {
+		log.Debug("配置文件禁用通知")
 		return
 	}
 
@@ -363,5 +460,6 @@ func Notify(title string, content string) {
 	}
 	args := []reflect.Value{reflect.ValueOf(notifyBody.Value), reflect.ValueOf(title), reflect.ValueOf(content)}
 	// 调用方法
+
 	method.Call(args)
 }

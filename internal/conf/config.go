@@ -73,6 +73,7 @@ type S3 struct {
 
 type Config struct {
 	Force                 bool        `json:"force" env:"FORCE"`
+	Notify                bool        `json:"notify" env:"NOTIFY"`
 	SiteURL               string      `json:"site_url" env:"SITE_URL"`
 	Cdn                   string      `json:"cdn" env:"CDN"`
 	JwtSecret             string      `json:"jwt_secret" env:"JWT_SECRET"`
@@ -111,6 +112,7 @@ func DefaultConfig() *Config {
 			CertFile:   "",
 			KeyFile:    "",
 		},
+		Notify:         true,
 		JwtSecret:      random.String(16),
 		TokenExpiresIn: 48,
 		TempDir:        tempDir,
