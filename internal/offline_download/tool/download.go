@@ -15,6 +15,7 @@ import (
 
 type DownloadTask struct {
 	tache.Base
+	Name         string       `json:"name"`
 	Url          string       `json:"url"`
 	DstDirPath   string       `json:"dst_dir_path"`
 	TempDir      string       `json:"temp_dir"`
@@ -40,6 +41,7 @@ func (t *DownloadTask) OnSucceeded() {
 }
 
 func (t *DownloadTask) Run() error {
+	t.Name = fmt.Sprintf("download %s to (%s)", t.Url, t.DstDirPath)
 	if err := t.tool.Run(t); !errs.IsNotSupportError(err) {
 		if err == nil {
 			return t.Complete()
@@ -158,7 +160,8 @@ func (t *DownloadTask) Complete() error {
 }
 
 func (t *DownloadTask) GetName() string {
-	return fmt.Sprintf("download %s to (%s)", t.Url, t.DstDirPath)
+	return t.Name
+	//return fmt.Sprintf("download %s to (%s)", t.Url, t.DstDirPath)
 }
 
 func (t *DownloadTask) GetStatus() string {

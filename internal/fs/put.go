@@ -14,6 +14,8 @@ import (
 
 type UploadTask struct {
 	tache.Base
+	Name             string `json:"name"`
+	Status           string `json:"status"`
 	storage          driver.Driver
 	dstDirActualPath string
 	file             model.FileStreamer
@@ -32,11 +34,13 @@ type UploadTask struct {
 // }
 
 func (t *UploadTask) GetName() string {
-	return fmt.Sprintf("upload %s to [%s](%s)", t.file.GetName(), t.storage.GetStorage().MountPath, t.dstDirActualPath)
+	return t.Name
+	//return fmt.Sprintf("upload %s to [%s](%s)", t.file.GetName(), t.storage.GetStorage().MountPath, t.dstDirActualPath)
 }
 
 func (t *UploadTask) GetStatus() string {
-	return "uploading"
+	return t.Status
+	//return "uploading"
 }
 
 func (t *UploadTask) Run() error {
@@ -63,6 +67,8 @@ func putAsTask(dstDirPath string, file model.FileStreamer) (tache.TaskWithInfo, 
 		//file.SetTmpFile(tempFile)
 	}
 	t := &UploadTask{
+		Name:             fmt.Sprintf("upload %s to [%s](%s)", file.GetName(), storage.GetStorage().MountPath, dstDirActualPath),
+		Status:           "uploading",
 		storage:          storage,
 		dstDirActualPath: dstDirActualPath,
 		file:             file,

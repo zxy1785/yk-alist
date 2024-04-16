@@ -47,8 +47,9 @@ type LogConfig struct {
 }
 
 type TaskConfig struct {
-	Workers  int `json:"workers" env:"WORKERS"`
-	MaxRetry int `json:"max_retry" env:"MAX_RETRY"`
+	Workers     int    `json:"workers" env:"WORKERS"`
+	MaxRetry    int    `json:"max_retry" env:"MAX_RETRY"`
+	PersistPath string `json:"persist_path" env:"PERSISTPATH"`
 }
 
 type TasksConfig struct {
@@ -96,6 +97,10 @@ func DefaultConfig() *Config {
 	indexDir := filepath.Join(flags.DataDir, "bleve")
 	logPath := filepath.Join(flags.DataDir, "log/log.log")
 	dbPath := filepath.Join(flags.DataDir, "data.db")
+	downloadPersistPath := filepath.Join(flags.DataDir, "tasks/download.json")
+	transferPersistPath := filepath.Join(flags.DataDir, "tasks/transfer.json")
+	uploadPersistPath := filepath.Join(flags.DataDir, "tasks/upload.json")
+	copyPersistPath := filepath.Join(flags.DataDir, "tasks/copy.json")
 	return &Config{
 		Scheme: Scheme{
 			Address:    "0.0.0.0",
@@ -130,19 +135,23 @@ func DefaultConfig() *Config {
 		TlsInsecureSkipVerify: true,
 		Tasks: TasksConfig{
 			Download: TaskConfig{
-				Workers:  5,
-				MaxRetry: 1,
+				Workers:     5,
+				MaxRetry:    1,
+				PersistPath: downloadPersistPath,
 			},
 			Transfer: TaskConfig{
-				Workers:  5,
-				MaxRetry: 2,
+				Workers:     5,
+				MaxRetry:    2,
+				PersistPath: transferPersistPath,
 			},
 			Upload: TaskConfig{
-				Workers: 5,
+				Workers:     5,
+				PersistPath: uploadPersistPath,
 			},
 			Copy: TaskConfig{
-				Workers:  5,
-				MaxRetry: 2,
+				Workers:     5,
+				MaxRetry:    2,
+				PersistPath: copyPersistPath,
 			},
 		},
 		Cors: Cors{

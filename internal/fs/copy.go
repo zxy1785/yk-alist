@@ -19,14 +19,15 @@ import (
 
 type CopyTask struct {
 	tache.Base
+	Name                   string `json:"name"`
 	Status                 string `json:"status"`
 	srcStorage, dstStorage driver.Driver
 	srcObjPath, dstDirPath string
 }
 
 func (t *CopyTask) GetName() string {
-	return fmt.Sprintf("copy [%s](%s) to [%s](%s)",
-		t.srcStorage.GetStorage().MountPath, t.srcObjPath, t.dstStorage.GetStorage().MountPath, t.dstDirPath)
+	return t.Name
+	//return fmt.Sprintf("copy [%s](%s) to [%s](%s)",t.srcStorage.GetStorage().MountPath, t.srcObjPath, t.dstStorage.GetStorage().MountPath, t.dstDirPath)
 }
 
 func (t *CopyTask) GetStatus() string {
@@ -34,7 +35,7 @@ func (t *CopyTask) GetStatus() string {
 }
 
 func (t *CopyTask) OnFailed() {
-	result := fmt.Sprintf("复制%s到%s失败:%s", t.srcObjPath, t.dstDirPath, t.GetErr())
+	result := fmt.Sprintf("%s:%s", t.GetName(), t.GetErr())
 	log.Debug(result)
 	go op.Notify("文件复制结果", result)
 }
@@ -93,6 +94,7 @@ func _copy(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool
 	}
 	// not in the same storage
 	t := &CopyTask{
+		Name:       fmt.Sprintf("copy [%s](%s) to [%s](%s)", srcStorage.GetStorage().MountPath, srcObjPath, dstStorage.GetStorage().MountPath, dstDirPath),
 		srcStorage: srcStorage,
 		dstStorage: dstStorage,
 		srcObjPath: srcObjActualPath,

@@ -336,7 +336,6 @@ func Notify(title string, content string) {
 	if err != nil {
 		log.Error("无法找到配置信息")
 	}
-	log.Warn(enable.Value)
 	if enable.Value != "true" && enable.Value != "1" {
 		log.Debug("未开启消息推送功能")
 		return

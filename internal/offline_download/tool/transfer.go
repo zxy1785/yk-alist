@@ -16,6 +16,8 @@ import (
 
 type TransferTask struct {
 	tache.Base
+	Name         string `json:"name"`
+	Status       string `json:"status"`
 	file         File
 	dstDirPath   string
 	tempDir      string
@@ -24,6 +26,8 @@ type TransferTask struct {
 
 func (t *TransferTask) Run() error {
 	// check dstDir again
+	t.Name = fmt.Sprintf("transfer %s to [%s]", t.file.Path, t.dstDirPath)
+	t.Status = "transferring"
 	storage, dstDirActualPath, err := op.GetStorageAndActualPath(t.dstDirPath)
 	if err != nil {
 		return errors.WithMessage(err, "failed get storage")
@@ -54,11 +58,13 @@ func (t *TransferTask) Run() error {
 }
 
 func (t *TransferTask) GetName() string {
-	return fmt.Sprintf("transfer %s to [%s]", t.file.Path, t.dstDirPath)
+	return t.Name
+	//return fmt.Sprintf("transfer %s to [%s]", t.file.Path, t.dstDirPath)
 }
 
 func (t *TransferTask) GetStatus() string {
-	return "transferring"
+	return t.Status
+	//return "transferring"
 }
 
 func (t *TransferTask) OnSucceeded() {
