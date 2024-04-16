@@ -21,13 +21,14 @@ type CopyTask struct {
 	tache.Base
 	Name                   string `json:"name"`
 	Status                 string `json:"status"`
+	SrcObjPath             string `json:"src_path"`
+	DstDirPath             string `json:"dst_path"`
 	srcStorage, dstStorage driver.Driver
-	srcObjPath, dstDirPath string
 }
 
 func (t *CopyTask) GetName() string {
 	return t.Name
-	//return fmt.Sprintf("copy [%s](%s) to [%s](%s)",t.srcStorage.GetStorage().MountPath, t.srcObjPath, t.dstStorage.GetStorage().MountPath, t.dstDirPath)
+	//return fmt.Sprintf("copy [%s](%s) to [%s](%s)",t.srcStorage.GetStorage().MountPath, t.SrcObjPath, t.dstStorage.GetStorage().MountPath, t.DstDirPath)
 }
 
 func (t *CopyTask) GetStatus() string {
@@ -41,25 +42,25 @@ func (t *CopyTask) OnFailed() {
 }
 
 func (t *CopyTask) OnSucceeded() {
-	result := fmt.Sprintf("复制%s到%s成功", t.srcObjPath, t.dstDirPath)
+	result := fmt.Sprintf("复制%s到%s成功", t.SrcObjPath, t.DstDirPath)
 	log.Debug(result)
 	go op.Notify("文件复制结果", result)
 }
 
 func (t *CopyTask) Run() error {
-	return copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.srcObjPath, t.dstDirPath)
+	return copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
 }
 
 var CopyTaskManager *tache.Manager[*CopyTask]
 
 // Copy if in the same storage, call move method
 // if not, add copy task
-func _copy(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool) (tache.TaskWithInfo, error) {
-	srcStorage, srcObjActualPath, err := op.GetStorageAndActualPath(srcObjPath)
+func _copy(ctx context.Context, SrcObjPath, DstDirPath string, lazyCache ...bool) (tache.TaskWithInfo, error) {
+	srcStorage, srcObjActualPath, err := op.GetStorageAndActualPath(SrcObjPath)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed get src storage")
 	}
-	dstStorage, dstDirActualPath, err := op.GetStorageAndActualPath(dstDirPath)
+	dstStorage, dstDirActualPath, err := op.GetStorageAndActualPath(DstDirPath)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed get dst storage")
 	}
@@ -70,7 +71,7 @@ func _copy(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool
 	if ctx.Value(conf.NoTaskKey) != nil {
 		srcObj, err := op.Get(ctx, srcStorage, srcObjActualPath)
 		if err != nil {
-			return nil, errors.WithMessagef(err, "failed get src [%s] file", srcObjPath)
+			return nil, errors.WithMessagef(err, "failed get src [%s] file", SrcObjPath)
 		}
 		if !srcObj.IsDir() {
 			// copy file directly
@@ -78,7 +79,7 @@ func _copy(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool
 				Header: http.Header{},
 			})
 			if err != nil {
-				return nil, errors.WithMessagef(err, "failed get [%s] link", srcObjPath)
+				return nil, errors.WithMessagef(err, "failed get [%s] link", SrcObjPath)
 			}
 			fs := stream.FileStream{
 				Obj: srcObj,
@@ -87,55 +88,55 @@ func _copy(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool
 			// any link provided is seekable
 			ss, err := stream.NewSeekableStream(fs, link)
 			if err != nil {
-				return nil, errors.WithMessagef(err, "failed get [%s] stream", srcObjPath)
+				return nil, errors.WithMessagef(err, "failed get [%s] stream", SrcObjPath)
 			}
 			return nil, op.Put(ctx, dstStorage, dstDirActualPath, ss, nil, false)
 		}
 	}
 	// not in the same storage
 	t := &CopyTask{
-		Name:       fmt.Sprintf("copy [%s](%s) to [%s](%s)", srcStorage.GetStorage().MountPath, srcObjPath, dstStorage.GetStorage().MountPath, dstDirPath),
+		Name:       fmt.Sprintf("copy [%s](%s) to [%s](%s)", srcStorage.GetStorage().MountPath, SrcObjPath, dstStorage.GetStorage().MountPath, DstDirPath),
 		srcStorage: srcStorage,
 		dstStorage: dstStorage,
-		srcObjPath: srcObjActualPath,
-		dstDirPath: dstDirActualPath,
+		SrcObjPath: srcObjActualPath,
+		DstDirPath: dstDirActualPath,
 	}
 	CopyTaskManager.Add(t)
 	return t, nil
 }
 
-func copyBetween2Storages(t *CopyTask, srcStorage, dstStorage driver.Driver, srcObjPath, dstDirPath string) error {
+func copyBetween2Storages(t *CopyTask, srcStorage, dstStorage driver.Driver, SrcObjPath, DstDirPath string) error {
 	t.Status = "getting src object"
-	srcObj, err := op.Get(t.Ctx(), srcStorage, srcObjPath)
+	srcObj, err := op.Get(t.Ctx(), srcStorage, SrcObjPath)
 	if err != nil {
-		return errors.WithMessagef(err, "failed get src [%s] file", srcObjPath)
+		return errors.WithMessagef(err, "failed get src [%s] file", SrcObjPath)
 	}
 	if srcObj.IsDir() {
 		t.Status = "src object is dir, listing objs"
-		objs, err := op.List(t.Ctx(), srcStorage, srcObjPath, model.ListArgs{})
+		objs, err := op.List(t.Ctx(), srcStorage, SrcObjPath, model.ListArgs{})
 		if err != nil {
-			return errors.WithMessagef(err, "failed list src [%s] objs", srcObjPath)
+			return errors.WithMessagef(err, "failed list src [%s] objs", SrcObjPath)
 		}
 		for _, obj := range objs {
 			if utils.IsCanceled(t.Ctx()) {
 				return nil
 			}
-			srcObjPath := stdpath.Join(srcObjPath, obj.GetName())
-			dstObjPath := stdpath.Join(dstDirPath, srcObj.GetName())
+			SrcObjPath := stdpath.Join(SrcObjPath, obj.GetName())
+			dstObjPath := stdpath.Join(DstDirPath, srcObj.GetName())
 			CopyTaskManager.Add(&CopyTask{
 				srcStorage: srcStorage,
 				dstStorage: dstStorage,
-				srcObjPath: srcObjPath,
-				dstDirPath: dstObjPath,
+				SrcObjPath: SrcObjPath,
+				DstDirPath: dstObjPath,
 			})
 		}
 		t.Status = "src object is dir, added all copy tasks of objs"
 		return nil
 	}
-	return copyFileBetween2Storages(t, srcStorage, dstStorage, srcObjPath, dstDirPath)
+	return copyFileBetween2Storages(t, srcStorage, dstStorage, SrcObjPath, DstDirPath)
 }
 
-func copyFileBetween2Storages(tsk *CopyTask, srcStorage, dstStorage driver.Driver, srcFilePath, dstDirPath string) error {
+func copyFileBetween2Storages(tsk *CopyTask, srcStorage, dstStorage driver.Driver, srcFilePath, DstDirPath string) error {
 	srcFile, err := op.Get(tsk.Ctx(), srcStorage, srcFilePath)
 	if err != nil {
 		return errors.WithMessagef(err, "failed get src [%s] file", srcFilePath)
@@ -155,5 +156,5 @@ func copyFileBetween2Storages(tsk *CopyTask, srcStorage, dstStorage driver.Drive
 	if err != nil {
 		return errors.WithMessagef(err, "failed get [%s] stream", srcFilePath)
 	}
-	return op.Put(tsk.Ctx(), dstStorage, dstDirPath, ss, tsk.SetProgress, true)
+	return op.Put(tsk.Ctx(), dstStorage, DstDirPath, ss, tsk.SetProgress, true)
 }

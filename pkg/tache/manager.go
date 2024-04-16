@@ -11,6 +11,7 @@ import (
 
 	"github.com/jaevor/go-nanoid"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/xhofe/gsync"
 )
 
@@ -190,6 +191,18 @@ func (m *Manager[T]) recover() error {
 	}
 	// add tasks
 	for _, task := range tasks {
+		_, task_exits := m.GetByID(task.GetID())
+		if !task_exits {
+			log.Errorln("任务不存在，可能是服务重启造成的,尝试通过API新建:仅支持复制任务,稍后添加")
+			marshal, _ := json.Marshal(task)
+			var task_map map[string]interface{}
+			err := json.Unmarshal([]byte(marshal), &task_map)
+			if err != nil {
+				log.Errorln("未能成功解析存储的任务信息，请删除人工添加")
+				continue
+			}
+			log.Debugln(task_map)
+		}
 		// only recover task which is not recoverable or recoverable and need recover
 		if r, ok := Task(task).(Recoverable); !ok || r.Recoverable() {
 			m.Add(task)
