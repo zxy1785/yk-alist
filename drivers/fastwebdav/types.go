@@ -87,22 +87,26 @@ type File struct {
 	Password    string `json:"password"`
 }
 
-func fileToObj(f File) *model.ObjThumb {
+func fileToObj(f File) *model.Object {
 	size, _ := strconv.ParseInt(f.Size, 10, 64)
 	create_time, _ := time.Parse("2006-01-02 15:04:05", f.CreateTime)
 	b, _ := json.Marshal(f)
 	file_id := base64.StdEncoding.EncodeToString(b)
-	return &model.ObjThumb{
-		Object: model.Object{
-			ID:       file_id,
-			Name:     f.Name,
-			Size:     size,
-			Ctime:    create_time,
-			Modified: create_time,
-			IsFolder: f.Kind == 0,
-			HashInfo: utils.NewHashInfo(hash_extend.GCID, f.Sha1),
-		},
+	file := &model.Object{
+		ID:       file_id,
+		Name:     f.Name,
+		Size:     size,
+		Ctime:    create_time,
+		Modified: create_time,
+		IsFolder: f.Kind == 0,
+		HashInfo: utils.NewHashInfo(hash_extend.GCID, f.Sha1),
 	}
+
+	// if len(f.DownloadUrl) > 4 {
+	// 	file.Url = model.Url{Url: f.DownloadUrl}
+	// }
+
+	return file
 }
 
 // Node is a node in the folder tree

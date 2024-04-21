@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -51,22 +52,47 @@ func (d *FastWebdav) List(ctx context.Context, dir model.Obj, args model.ListArg
 func (d *FastWebdav) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
 	var dUrl string
 	b, _ := base64.StdEncoding.DecodeString(file.GetID())
+
 	var f File
 	_ = json.Unmarshal(b, &f)
 	url := f.Provider + "/url"
 
-	err := d.request(http.MethodPost, url, func(req *resty.Request) {
-		req.SetBody(f)
-	}, &dUrl)
-	if err != nil {
-		return nil, err
+	if len(f.DownloadUrl) > 4 {
+		dUrl = f.DownloadUrl
+	} else {
+		err := d.request(http.MethodPost, url, func(req *resty.Request) {
+			req.SetBody(f)
+		}, &dUrl)
+		if err != nil {
+			return nil, err
+		}
 	}
-	if strings.HasPrefix(dUrl, "/api") {
-		dUrl = d.Address + dUrl
-	}
-	return &model.Link{
+
+	// if strings.HasPrefix(dUrl, "/api") {
+	// 	dUrl = d.Address + dUrl
+	// }
+
+	link := &model.Link{
 		URL: dUrl,
-	}, nil
+	}
+
+	if len(f.PlayHeaders) > 4 {
+		var headers map[string]string
+		err := json.Unmarshal([]byte(f.PlayHeaders), &headers)
+		if err != nil {
+			fmt.Println("无法解析自定义Header:", err)
+			return link, err
+		}
+
+		// 将 map 转换为 http.Header
+		header := make(http.Header)
+		for key, value := range headers {
+			header.Add(key, value)
+		}
+
+		link.Header = header
+	}
+	return link, nil
 }
 
 func (d *FastWebdav) MakeDir(ctx context.Context, parentDir model.Obj, dirName string) error {
