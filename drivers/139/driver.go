@@ -157,7 +157,7 @@ func (d *Yun139) MakeDir(ctx context.Context, parentDir model.Obj, dirName strin
 				"accountType": 1,
 			},
 			"docLibName": dirName,
-			"path":path
+			"path":path,
 		}
 		pathname := "/orchestration/familyCloud-rebuild/cloudCatalog/v1.0/createCloudDoc"
 		_, err = d.post(pathname, data, nil)
