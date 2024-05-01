@@ -148,6 +148,8 @@ func (d *Yun139) MakeDir(ctx context.Context, parentDir model.Obj, dirName strin
 		pathname := "/orchestration/personalCloud/catalog/v1.0/createCatalogExt"
 		_, err = d.post(pathname, data, nil)
 	case MetaFamily:
+		cataID := dstDir.GetID()
+		path := cataID
 		data := base.Json{
 			"cloudID": d.CloudID,
 			"commonAccountInfo": base.Json{
@@ -155,8 +157,9 @@ func (d *Yun139) MakeDir(ctx context.Context, parentDir model.Obj, dirName strin
 				"accountType": 1,
 			},
 			"docLibName": dirName,
+			"path":path
 		}
-		pathname := "/orchestration/familyCloud/cloudCatalog/v1.0/createCloudDoc"
+		pathname := "/orchestration/familyCloud-rebuild/cloudCatalog/v1.0/createCloudDoc"
 		_, err = d.post(pathname, data, nil)
 	default:
 		err = errs.NotImplement
