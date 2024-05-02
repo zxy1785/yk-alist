@@ -14,7 +14,7 @@ jobs:
         usesh: true
         release: 13.2
         prepare: |
-          pkg install -y node wget curl git go121 gcc bash gawk gsed
+          pkg install -y node wget curl git go121 gcc bash gawk gsed upx 
           ln -s /usr/local/bin/go121 /usr/local/bin/go
         run: |
           export LATEST_APP=$(wget -qO- https://api.github.com/repos/ykxVK8yL5L/alist/tags | gawk -F '["v]' '/name/{print "v"$5;exit}')
@@ -22,6 +22,8 @@ jobs:
           cd alist/public && wget https://github.com/ykxVK8yL5L/alist-web/releases/latest/download/dist.tar.gz && tar xzf dist.tar.gz && rm dist.tar.gz
           cd ..
           bash ../build-freebsd.sh
+          cd ..
+          upx -9 alist/alist
           tar -czvf alist/alist-freebsd.tar.gz alist/alist
           
     - name: Upload artifact
