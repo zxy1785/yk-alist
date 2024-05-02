@@ -1,4 +1,4 @@
-name: Build Alist
+name: Build Alist For Freebsd
 
 on: workflow_dispatch
 
