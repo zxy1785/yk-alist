@@ -1,6 +1,6 @@
 #!/bin/sh
 
-API_URL="https://api.github.com/repos/uubulb/alist-freebsd/releases/latest"
+API_URL="https://api.github.com/repos/ykxVK8yL5L/alist/releases/latest"
 
 DOWNLOAD_URL=$(curl -s $API_URL | jq -r ".assets[] | select(.name | contains(\"alist-freebsd\")) | .browser_download_url")
 
