@@ -1,6 +1,9 @@
 package server
 
 import (
+	"fmt"
+	"math/rand"
+	"time"
 	"github.com/alist-org/alist/v3/cmd/flags"
 	"github.com/alist-org/alist/v3/internal/conf"
 	"github.com/alist-org/alist/v3/internal/message"
@@ -13,7 +16,24 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 生成指定长度的随机字符串
+func generateRandomString(length int) string {
+	rand.Seed(time.Now().UnixNano())
+
+	// 定义包含数字和字母的字符集
+	charSet := "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+	var result string
+	for i := 0; i < length; i++ {
+		randomIndex := rand.Intn(len(charSet))
+		result += string(charSet[randomIndex])
+	}
+
+	return result
+}
+
 func Init(e *gin.Engine) {
+	randomStr := generateRandomString(10)
 	if !utils.SliceContains([]string{"", "/"}, conf.URL.Path) {
 		e.GET("/", func(c *gin.Context) {
 			c.Redirect(302, conf.URL.Path)
@@ -60,6 +80,11 @@ func Init(e *gin.Engine) {
 	api.GET("/auth/sso_callback", handles.SSOLoginCallback)
 	api.GET("/auth/get_sso_id", handles.SSOLoginCallback)
 	api.GET("/auth/sso_get_token", handles.SSOLoginCallback)
+
+	//启动时生成随机字符串，用来验证唯一性
+	api.GET("/instanceid", func(c *gin.Context) {
+		c.String(200, randomStr)
+	})
 
 	//webauthn
 	webauthn.GET("/webauthn_begin_registration", handles.BeginAuthnRegistration)
