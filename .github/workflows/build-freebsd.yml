@@ -22,9 +22,8 @@ jobs:
           cd alist/public && wget https://github.com/ykxVK8yL5L/alist-web/releases/latest/download/dist.tar.gz && tar xzf dist.tar.gz && rm dist.tar.gz
           cd ..
           bash ../build-freebsd.sh
-          cd ..
-          upx -9 alist/alist
-          tar -czvf alist/alist-freebsd.tar.gz alist/alist
+          upx -9 alist
+          tar -czvf alist-freebsd.tar.gz alist
           
     - name: Upload artifact
       uses: actions/upload-artifact@main
