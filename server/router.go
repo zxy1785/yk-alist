@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 	"github.com/alist-org/alist/v3/cmd/flags"
