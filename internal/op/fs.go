@@ -290,6 +290,20 @@ func Other(ctx context.Context, storage driver.Driver, args model.FsOtherArgs) (
 	}
 }
 
+// Offline api
+func Offline(ctx context.Context, obj model.Obj, storage driver.Driver, args model.FsOtherArgs) (interface{}, error) {
+	if o, ok := storage.(driver.Offline); ok {
+		return o.Offline(ctx, model.OtherArgs{
+			Obj:    obj,
+			Method: args.Method,
+			Data:   args.Data,
+		})
+	} else {
+		return nil, errs.NotImplement
+	}
+
+}
+
 var mkdirG singleflight.Group[interface{}]
 
 func MakeDir(ctx context.Context, storage driver.Driver, path string, lazyCache ...bool) error {

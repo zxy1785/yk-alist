@@ -6,6 +6,7 @@ import (
 
 	"github.com/alist-org/alist/v3/internal/conf"
 	"github.com/alist-org/alist/v3/internal/errs"
+	"github.com/alist-org/alist/v3/internal/model"
 	"github.com/alist-org/alist/v3/internal/op"
 	"github.com/alist-org/alist/v3/pkg/tache"
 	"github.com/google/uuid"
@@ -31,6 +32,7 @@ type AddURLArgs struct {
 func AddURL(ctx context.Context, args *AddURLArgs) (tache.TaskWithInfo, error) {
 	// get tool
 	tool, err := Tools.Get(args.Tool)
+
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed get tool")
 	}
@@ -72,6 +74,16 @@ func AddURL(ctx context.Context, args *AddURLArgs) (tache.TaskWithInfo, error) {
 		DeletePolicy: args.DeletePolicy,
 		tool:         tool,
 	}
-	DownloadTaskManager.Add(t)
+	if tool.Name() == "storage" {
+		args := model.FsOtherArgs{
+			Path:   args.DstDirPath,
+			Method: "offline",
+			Data:   args.URL,
+		}
+		op.Offline(ctx, obj, storage, args)
+	} else {
+		DownloadTaskManager.Add(t)
+	}
 	return t, nil
+
 }

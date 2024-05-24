@@ -29,6 +29,10 @@ type Other interface {
 	Other(ctx context.Context, args model.OtherArgs) (interface{}, error)
 }
 
+type Offline interface {
+	Offline(ctx context.Context, args model.OtherArgs) (interface{}, error)
+}
+
 type Reader interface {
 	// List files in the path
 	// if identify files by path, need to set ID with path,like path.Join(dir.GetID(), obj.GetName())

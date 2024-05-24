@@ -3,9 +3,10 @@ package thunderx
 import (
 	"context"
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"net/http"
 	"strings"
+
+	"github.com/go-resty/resty/v2"
 
 	"github.com/alist-org/alist/v3/drivers/base"
 	"github.com/alist-org/alist/v3/internal/driver"
@@ -312,6 +313,25 @@ func (xc *XunLeiXCommon) Rename(ctx context.Context, srcObj model.Obj, newName s
 		r.SetBody(&base.Json{"name": newName})
 	}, nil)
 	return err
+}
+
+func (xc *XunLeiXCommon) Offline(ctx context.Context, args model.OtherArgs) (interface{}, error) {
+	_, err := xc.Request(FILE_API_URL, http.MethodPost, func(r *resty.Request) {
+		r.SetContext(ctx)
+		r.SetBody(&base.Json{
+			"kind":        "drive#file",
+			"name":        "",
+			"upload_type": "UPLOAD_TYPE_URL",
+			"url": &base.Json{
+				"url": args.Data,
+			},
+			"folder_type": "DOWNLOAD",
+		})
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	return "ok", nil
 }
 
 func (xc *XunLeiXCommon) Copy(ctx context.Context, srcObj, dstDir model.Obj) error {
