@@ -16,12 +16,13 @@ import (
 // do others that not defined in Driver interface
 
 func (d *PikPak) login() error {
-	url := "https://user.mypikpak.com/v1/auth/signin"
+	url := "https://user.mypikpak.com/v1/auth/token"
 	var e RespErr
-	res, err := base.RestyClient.R().SetError(&e).SetBody(base.Json{
+	res, err := base.RestyClient.R().SetError(&e).SetHeader("user-agent", "").SetBody(base.Json{
 		"captcha_token": "",
 		"client_id":     "YNxT9w7GMdWvEOKa",
 		"client_secret": "dbw2OtmVEeuUvIptb1Coyg",
+		"grant_type":    "password",
 		"username":      d.Username,
 		"password":      d.Password,
 	}).Post(url)
