@@ -80,9 +80,6 @@ type Addition struct {
 	Password     string `json:"password" required:"true"`
 	CaptchaToken string `json:"captcha_token"`
 	UseVideoUrl  bool   `json:"use_video_url" default:"true"`
-	//是否使用代理
-	UseProxy bool   `json:"use_proxy" default:"false"`
-	ProxyUrl string `json:"proxy_url" default:""`
 }
 
 // 登录特征,用于判断是否重新登录
