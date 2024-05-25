@@ -56,6 +56,8 @@ type Common struct {
 	UserAgent         string
 	DownloadUserAgent string
 	UseVideoUrl       bool
+	UseProxy          bool
+	ProxyUrl          string
 
 	// 验证码token刷新成功回调
 	refreshCTokenCk func(token string)
