@@ -329,6 +329,7 @@ func (xc *XunLeiXCommon) Offline(ctx context.Context, args model.OtherArgs) (int
 		r.SetBody(&base.Json{
 			"kind":        "drive#file",
 			"name":        "",
+			"parent_id":   args.Obj.GetID(),
 			"upload_type": "UPLOAD_TYPE_URL",
 			"url": &base.Json{
 				"url":       args.Data,
