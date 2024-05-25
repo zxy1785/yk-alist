@@ -325,7 +325,6 @@ func (xc *XunLeiXCommon) Offline(ctx context.Context, args model.OtherArgs) (int
 			"url": &base.Json{
 				"url": args.Data,
 			},
-			"folder_type": "DOWNLOAD",
 		})
 	}, nil)
 	if err != nil {
@@ -535,6 +534,7 @@ func (xc *XunLeiXCommon) Login(username, password string) (*TokenResp, error) {
 	if err != nil {
 		return nil, err
 	}
+	resp.UserID = resp.Sub
 	return &resp, nil
 }
 
