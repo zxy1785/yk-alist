@@ -278,7 +278,6 @@ func (xc *XunLeiXCommon) Link(ctx context.Context, file model.Obj, args model.Li
 		} else {
 			link.URL = xc.ProxyUrl + "/" + link.URL
 		}
-
 	}
 
 	/*
