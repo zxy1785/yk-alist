@@ -34,7 +34,8 @@ jobs:
 
     - name: Generate release tag
       id: tag
-      run: echo "release_tag=$(wget -qO- https://api.github.com/repos/ykxVK8yL5L/alist/tags | gawk -F '["v]' '/name/{print "v"$5;exit}')" >> $GITHUB_OUTPUT
+      #run: echo "release_tag=$(wget -qO- https://api.github.com/repos/ykxVK8yL5L/alist/tags | gawk -F '["v]' '/name/{print "v"$5;exit}')" >> $GITHUB_OUTPUT
+      run: echo "release_tag=latest" >> $GITHUB_OUTPUT
 
     - name: Create release
       uses: softprops/action-gh-release@v1
