@@ -43,7 +43,7 @@ type ExpertAddition struct {
 	DownloadUserAgent string `json:"download_user_agent"  required:"true" default:"AndroidDownloadManager/12 (Linux; U; Android 12; M2004J7AC Build/SP1A.210812.016)"`
 
 	//优先使用视频链接代替下载链接
-	UseVideoUrl bool `json:"use_video_url"`
+	UseVideoUrl bool `json:"use_video_url" default:"true"`
 
 	//是否使用代理
 	UseProxy bool `json:"use_proxy"`
