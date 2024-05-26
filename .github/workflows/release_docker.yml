@@ -72,6 +72,14 @@ jobs:
           labels: ${{ steps.meta-ffmpeg.outputs.labels }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/386,linux/arm/v6,linux/s390x
 
+      - name: 删除旧的运行记录
+        uses: Mattraks/delete-workflow-runs@v1.2.3
+        with:
+          token: ${{ secrets.MY_TOKEN }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 0
+
   # release_docker_with_aria2:
   #   needs: release_docker
   #   name: Release docker with aria2
