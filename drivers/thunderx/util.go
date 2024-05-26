@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/alist-org/alist/v3/drivers/base"
@@ -167,13 +166,13 @@ func (c *Common) Request(url, method string, callback base.ReqCallback, resp int
 
 	reurl := url
 
-	if c.UseProxy {
-		if strings.HasSuffix(c.ProxyUrl, "/") {
-			reurl = c.ProxyUrl + url
-		} else {
-			reurl = c.ProxyUrl + "/" + url
-		}
-	}
+	// if c.UseProxy {
+	// 	if strings.HasSuffix(c.ProxyUrl, "/") {
+	// 		reurl = c.ProxyUrl + url
+	// 	} else {
+	// 		reurl = c.ProxyUrl + "/" + url
+	// 	}
+	// }
 
 	res, err := req.Execute(method, reurl)
 	if err != nil {
