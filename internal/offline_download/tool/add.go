@@ -80,7 +80,10 @@ func AddURL(ctx context.Context, args *AddURLArgs) (tache.TaskWithInfo, error) {
 			Method: "offline",
 			Data:   args.URL,
 		}
-		op.Offline(ctx, obj, storage, args)
+		_, err := op.Offline(ctx, obj, storage, args)
+		if err != nil {
+		    return nil, errors.WithMessage(err, "failed add task")
+	        }
 	} else {
 		DownloadTaskManager.Add(t)
 	}
