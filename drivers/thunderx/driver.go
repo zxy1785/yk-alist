@@ -531,6 +531,9 @@ func (xc *XunLeiXCommon) RefreshToken(refreshToken string) (*TokenResp, error) {
 	if resp.RefreshToken == "" {
 		return nil, errs.EmptyToken
 	}
+
+	resp.UserID = resp.Sub
+
 	return &resp, nil
 }
 
