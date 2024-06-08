@@ -150,7 +150,9 @@ func (x *ThunderXExpert) Init(ctx context.Context) (err error) {
 				DownloadUserAgent: x.DownloadUserAgent,
 				UseVideoUrl:       x.UseVideoUrl,
 				UseProxy:          x.UseProxy,
-				ProxyUrl:          x.ProxyUrl,
+				//下载地址是否使用代理
+				UseUrlProxy: x.UseUrlProxy,
+				ProxyUrl:    x.ProxyUrl,
 
 				refreshCTokenCk: func(token string) {
 					x.CaptchaToken = token
@@ -272,7 +274,7 @@ func (xc *XunLeiXCommon) Link(ctx context.Context, file model.Obj, args model.Li
 		}
 	}
 
-	if xc.UseProxy {
+	if xc.UseUrlProxy {
 		if strings.HasSuffix(xc.ProxyUrl, "/") {
 			link.URL = xc.ProxyUrl + link.URL
 		} else {

@@ -48,6 +48,9 @@ type ExpertAddition struct {
 	//是否使用代理
 	UseProxy bool `json:"use_proxy"`
 
+	//下载地址是否使用代理
+	UseUrlProxy bool `json:"use_url_proxy"`
+
 	ProxyUrl string `json:"proxy_url" default:""`
 }
 
