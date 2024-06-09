@@ -109,7 +109,7 @@ func (d *PikPakProxy) Rename(ctx context.Context, srcObj model.Obj, newName stri
 }
 
 
-func (d *PikPak) Offline(ctx context.Context, args model.OtherArgs) (interface{}, error) {
+func (d *PikPakProxy) Offline(ctx context.Context, args model.OtherArgs) (interface{}, error) {
 	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files", http.MethodPost, func(r *resty.Request) {
 		r.SetContext(ctx)
 		r.SetBody(&base.Json{
