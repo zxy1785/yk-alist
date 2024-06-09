@@ -108,6 +108,27 @@ func (d *PikPakProxy) Rename(ctx context.Context, srcObj model.Obj, newName stri
 	return err
 }
 
+
+func (d *PikPak) Offline(ctx context.Context, args model.OtherArgs) (interface{}, error) {
+	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files", http.MethodPost, func(r *resty.Request) {
+		r.SetContext(ctx)
+		r.SetBody(&base.Json{
+			"kind":        "drive#file",
+			"name":        "",
+			"upload_type": "UPLOAD_TYPE_URL",
+			"url": &base.Json{
+				"url": args.Data,
+			},
+			"folder_type": "DOWNLOAD",
+		})
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	return "ok", nil
+}
+
+
 func (d *PikPakProxy) Copy(ctx context.Context, srcObj, dstDir model.Obj) error {
 	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files:batchCopy", http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
