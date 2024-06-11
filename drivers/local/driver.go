@@ -21,7 +21,7 @@ import (
 	"github.com/alist-org/alist/v3/internal/sign"
 	"github.com/alist-org/alist/v3/pkg/utils"
 	"github.com/alist-org/alist/v3/server/common"
-	"github.com/djherbis/times"
+	"github.com/jing332/times"
 	log "github.com/sirupsen/logrus"
 	_ "golang.org/x/image/webp"
 )
