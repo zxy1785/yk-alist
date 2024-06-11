@@ -19,7 +19,7 @@ require (
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/deckarep/golang-set/v2 v2.6.0
 	github.com/disintegration/imaging v1.6.2
-	github.com/djherbis/times v1.6.0
+	github.com/jing332/times v0.0.0-20240518094816-0ce84dcd6b94
 	github.com/dlclark/regexp2 v1.10.0
 	github.com/dustinxie/ecc v0.0.0-20210511000915-959544187564
 	github.com/foxxorcat/mopan-sdk-go v0.1.5
@@ -218,4 +218,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
 )
-replace github.com/djherbis/times v1.6.0 => github.com/jing332/times v0.0.0-20240518094816-0ce84dcd6b94
