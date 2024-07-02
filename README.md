@@ -105,6 +105,11 @@ English | [中文](./README_cn.md)| [日本語](./README_ja.md) | [Contributing]
 wget -O alist-freebsd.sh https://raw.githubusercontent.com/ykxVK8yL5L/alist/main/serv00.sh && sh alist-freebsd.sh
 ```
 
+## Docker
+```
+docker run  --name="alist" -p 10021:5244 -v ~/alist:/opt/alist/data -e ALIST_ADMIN_PASSWORD='admin' ykxvk8yl5l/alist:latest
+```
+
 ## Demo
 
 <https://al.nn.ci>
