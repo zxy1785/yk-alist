@@ -9,6 +9,7 @@ import (
 	"github.com/alist-org/alist/v3/drivers/base"
 	"github.com/alist-org/alist/v3/internal/driver"
 	"github.com/alist-org/alist/v3/internal/model"
+	"github.com/alist-org/alist/v3/internal/op"
 	"github.com/alist-org/alist/v3/pkg/utils"
 	hash_extend "github.com/alist-org/alist/v3/pkg/utils/hash"
 	"github.com/aws/aws-sdk-go/aws"
@@ -22,6 +23,7 @@ import (
 type PikPakProxy struct {
 	model.Storage
 	Addition
+	*Common
 	RefreshToken string
 	AccessToken  string
 }
@@ -35,7 +37,35 @@ func (d *PikPakProxy) GetAddition() driver.Additional {
 }
 
 func (d *PikPakProxy) Init(ctx context.Context) (err error) {
-	return d.login()
+	if d.ClientID == "" || d.ClientSecret == "" {
+		d.ClientID = "YNxT9w7GMdWvEOKa"
+		d.ClientSecret = "dbw2OtmVEeuUvIptb1Coyg"
+	}
+
+	if d.Common == nil {
+		d.Common = &Common{
+			client:       base.NewRestyClient(),
+			CaptchaToken: "",
+			UserID:       "",
+			DeviceID:     utils.GetMD5EncodeStr(d.Username + d.Password),
+			UserAgent:    BuildCustomUserAgent(utils.GetMD5EncodeStr(d.Username+d.Password), ClientID, PackageName, SdkVersion, ClientVersion, PackageName, ""),
+			RefreshCTokenCk: func(token string) {
+				d.Common.CaptchaToken = token
+				op.MustSaveDriverStorage(d)
+			},
+		}
+	}
+
+	//return d.login()
+
+	// 获取CaptchaToken
+	_ = d.login()
+
+	// 获取用户ID
+	_ = d.GetUserID(ctx)
+	// 更新UserAgent
+	d.Common.UserAgent = BuildCustomUserAgent(d.Common.DeviceID, ClientID, PackageName, SdkVersion, ClientVersion, PackageName, d.Common.UserID)
+	return nil
 }
 
 func (d *PikPakProxy) Drop(ctx context.Context) error {
@@ -54,8 +84,10 @@ func (d *PikPakProxy) List(ctx context.Context, dir model.Obj, args model.ListAr
 
 func (d *PikPakProxy) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
 	var resp File
-	_, err := d.request(fmt.Sprintf("https://api-drive.mypikpak.com/drive/v1/files/%s?_magic=2021&thumbnail_size=SIZE_LARGE", file.GetID()),
+	//_, err := d.request(fmt.Sprintf("https://api-drive.mypikpak.com/drive/v1/files/%s?_magic=2021&thumbnail_size=SIZE_LARGE", file.GetID()),http.MethodGet, nil, &resp)
+	_, err := d.requestWithCaptchaToken(fmt.Sprintf("https://api-drive.mypikpak.com/drive/v1/files/%s?_magic=2021&thumbnail_size=SIZE_LARGE", file.GetID()),
 		http.MethodGet, nil, &resp)
+
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +140,6 @@ func (d *PikPakProxy) Rename(ctx context.Context, srcObj model.Obj, newName stri
 	return err
 }
 
-
 func (d *PikPakProxy) Offline(ctx context.Context, args model.OtherArgs) (interface{}, error) {
 	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files", http.MethodPost, func(r *resty.Request) {
 		r.SetContext(ctx)
@@ -128,7 +159,6 @@ func (d *PikPakProxy) Offline(ctx context.Context, args model.OtherArgs) (interf
 	return "ok", nil
 }
 
-
 func (d *PikPakProxy) Copy(ctx context.Context, srcObj, dstDir model.Obj) error {
 	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files:batchCopy", http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
@@ -142,7 +172,8 @@ func (d *PikPakProxy) Copy(ctx context.Context, srcObj, dstDir model.Obj) error 
 }
 
 func (d *PikPakProxy) Remove(ctx context.Context, obj model.Obj) error {
-	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files:batchTrash", http.MethodPost, func(req *resty.Request) {
+	//https://api-drive.mypikpak.com/drive/v1/files:batchTrash
+	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files:batchDelete", http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"ids": []string{obj.GetID()},
 		})
@@ -210,6 +241,21 @@ func (d *PikPakProxy) Put(ctx context.Context, dstDir model.Obj, stream model.Fi
 	}
 	_, err = uploader.UploadWithContext(ctx, input)
 	return err
+}
+
+func (d *PikPakProxy) GetUserID(ctx context.Context) error {
+	url := "https://api-drive.mypikpak.com/vip/v1/vip/info"
+	var resp VipInfo
+	_, err := d.requestWithCaptchaToken(url, http.MethodGet, func(req *resty.Request) {
+		req.SetContext(ctx)
+	}, &resp)
+	if err != nil {
+		return fmt.Errorf("failed to get user id : %w", err)
+	}
+	if resp.Data.UserID != "" {
+		d.Common.SetUserID(resp.Data.UserID)
+	}
+	return nil
 }
 
 var _ driver.Driver = (*PikPakProxy)(nil)

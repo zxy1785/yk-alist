@@ -1,6 +1,7 @@
 package pikpak_proxy
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -98,4 +99,68 @@ type UploadTaskData struct {
 	} `json:"resumable"`
 
 	File File `json:"file"`
+}
+
+type CaptchaTokenRequest struct {
+	Action       string            `json:"action"`
+	CaptchaToken string            `json:"captcha_token"`
+	ClientID     string            `json:"client_id"`
+	DeviceID     string            `json:"device_id"`
+	Meta         map[string]string `json:"meta"`
+	RedirectUri  string            `json:"redirect_uri"`
+}
+
+type CaptchaTokenResponse struct {
+	CaptchaToken string `json:"captcha_token"`
+	ExpiresIn    int64  `json:"expires_in"`
+	Url          string `json:"url"`
+}
+
+type ErrResp struct {
+	ErrorCode        int64  `json:"error_code"`
+	ErrorMsg         string `json:"error"`
+	ErrorDescription string `json:"error_description"`
+	//	ErrorDetails   interface{} `json:"error_details"`
+}
+
+func (e *ErrResp) IsError() bool {
+	return e.ErrorCode != 0 || e.ErrorMsg != "" || e.ErrorDescription != ""
+}
+
+func (e *ErrResp) Error() string {
+	return fmt.Sprintf("ErrorCode: %d ,Error: %s ,ErrorDescription: %s ", e.ErrorCode, e.ErrorMsg, e.ErrorDescription)
+}
+
+type VipInfo struct {
+	Data struct {
+		Expire      time.Time `json:"expire"`
+		ExtUserInfo struct {
+			UserRegion string `json:"userRegion"`
+		} `json:"extUserInfo"`
+		ExtType    string `json:"ext_type"`
+		FeeRecord  string `json:"fee_record"`
+		Restricted struct {
+			Result  bool `json:"result"`
+			Content struct {
+				Text     string `json:"text"`
+				Color    string `json:"color"`
+				DeepLink string `json:"deepLink"`
+			} `json:"content"`
+			LearnMore struct {
+				Text     string `json:"text"`
+				Color    string `json:"color"`
+				DeepLink string `json:"deepLink"`
+			} `json:"learnMore"`
+		} `json:"restricted"`
+		Status  string `json:"status"`
+		Type    string `json:"type"`
+		UserID  string `json:"user_id"`
+		VipItem []struct {
+			Type        string    `json:"type"`
+			Description string    `json:"description"`
+			Status      string    `json:"status"`
+			Expire      time.Time `json:"expire"`
+			SurplusDay  int       `json:"surplus_day"`
+		} `json:"vipItem"`
+	} `json:"data"`
 }
