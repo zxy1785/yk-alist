@@ -250,18 +250,19 @@ func (d *PikPakProxy) Put(ctx context.Context, dstDir model.Obj, stream model.Fi
 }
 
 func (d *PikPakProxy) Offline(ctx context.Context, args model.OtherArgs) (interface{}, error) {
-	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files", http.MethodPost, func(r *resty.Request) {
-		r.SetContext(ctx)
-		r.SetBody(&base.Json{
-			"kind":        "drive#file",
-			"name":        "",
-			"upload_type": "UPLOAD_TYPE_URL",
-			"url": &base.Json{
-				"url": args.Data,
-			},
-			"folder_type": "DOWNLOAD",
-		})
-	}, nil)
+	_, err := d.requestWithCaptchaToken("https://api-drive.mypikpak.com/drive/v1/files",
+		http.MethodPost, func(r *resty.Request) {
+			r.SetContext(ctx)
+			r.SetBody(&base.Json{
+				"kind":        "drive#file",
+				"name":        "",
+				"upload_type": "UPLOAD_TYPE_URL",
+				"url": &base.Json{
+					"url": args.Data,
+				},
+				"folder_type": "DOWNLOAD",
+			})
+		}, nil)
 	if err != nil {
 		return nil, err
 	}
