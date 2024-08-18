@@ -178,7 +178,8 @@ func (d *PikPakProxy) Copy(ctx context.Context, srcObj, dstDir model.Obj) error 
 }
 
 func (d *PikPakProxy) Remove(ctx context.Context, obj model.Obj) error {
-	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files:batchTrash", http.MethodPost, func(req *resty.Request) {
+	//https://api-drive.mypikpak.com/drive/v1/files:batchTrash
+	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files:batchDelete", http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"ids": []string{obj.GetID()},
 		})
@@ -248,29 +249,23 @@ func (d *PikPakProxy) Put(ctx context.Context, dstDir model.Obj, stream model.Fi
 	return err
 }
 
-// 离线下载文件
-func (d *PikPakProxy) OfflineDownload(ctx context.Context, fileUrl string, parentDir model.Obj, fileName string) (*OfflineTask, error) {
-	requestBody := base.Json{
-		"kind":        "drive#file",
-		"name":        fileName,
-		"upload_type": "UPLOAD_TYPE_URL",
-		"url": base.Json{
-			"url": fileUrl,
-		},
-		"parent_id":   parentDir.GetID(),
-		"folder_type": "",
-	}
-
-	var resp OfflineDownloadResp
-	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files", http.MethodPost, func(req *resty.Request) {
-		req.SetBody(requestBody)
-	}, &resp)
-
+func (d *PikPakProxy) Offline(ctx context.Context, args model.OtherArgs) (interface{}, error) {
+	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files", http.MethodPost, func(r *resty.Request) {
+		r.SetContext(ctx)
+		r.SetBody(&base.Json{
+			"kind":        "drive#file",
+			"name":        "",
+			"upload_type": "UPLOAD_TYPE_URL",
+			"url": &base.Json{
+				"url": args.Data,
+			},
+			"folder_type": "DOWNLOAD",
+		})
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-
-	return &resp.Task, err
+	return "ok", nil
 }
 
 /*
