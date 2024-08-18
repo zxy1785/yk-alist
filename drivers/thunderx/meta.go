@@ -43,7 +43,7 @@ type ExpertAddition struct {
 	DownloadUserAgent string `json:"download_user_agent"  required:"false" default:""`
 
 	//优先使用视频链接代替下载链接
-	UseVideoUrl bool `json:"use_video_url"`
+	UseVideoUrl bool `json:"use_video_url" default:"true"`
 	//是否使用代理
 	UseProxy bool `json:"use_proxy"`
 	//下载地址是否使用代理

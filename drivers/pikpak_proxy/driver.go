@@ -1,15 +1,18 @@
-package pikpak_proxy
+package PikPakProxy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
+
+	"github.com/alist-org/alist/v3/internal/op"
 
 	"github.com/alist-org/alist/v3/drivers/base"
 	"github.com/alist-org/alist/v3/internal/driver"
 	"github.com/alist-org/alist/v3/internal/model"
-	"github.com/alist-org/alist/v3/internal/op"
 	"github.com/alist-org/alist/v3/pkg/utils"
 	hash_extend "github.com/alist-org/alist/v3/pkg/utils/hash"
 	"github.com/aws/aws-sdk-go/aws"
@@ -47,6 +50,8 @@ func (d *PikPakProxy) Init(ctx context.Context) (err error) {
 			client:       base.NewRestyClient(),
 			CaptchaToken: "",
 			UserID:       "",
+			UseProxy:     d.Addition.UseProxy,
+			ProxyUrl:     d.Addition.ProxyUrl,
 			DeviceID:     utils.GetMD5EncodeStr(d.Username + d.Password),
 			UserAgent:    BuildCustomUserAgent(utils.GetMD5EncodeStr(d.Username+d.Password), ClientID, PackageName, SdkVersion, ClientVersion, PackageName, ""),
 			RefreshCTokenCk: func(token string) {
@@ -56,13 +61,27 @@ func (d *PikPakProxy) Init(ctx context.Context) (err error) {
 		}
 	}
 
-	//return d.login()
+	if d.Addition.CaptchaToken != "" && d.Addition.RefreshToken == "" {
+		d.SetCaptchaToken(d.Addition.CaptchaToken)
+	}
+
+	// 如果已经有RefreshToken，直接刷新AccessToken
+	if d.Addition.RefreshToken != "" {
+		d.RefreshToken = d.Addition.RefreshToken
+		if err := d.refreshToken(); err != nil {
+			return err
+		}
+	} else {
+		if err := d.login(); err != nil {
+			return err
+		}
+	}
 
 	// 获取CaptchaToken
-	_ = d.login()
-
-	// 获取用户ID
-	_ = d.GetUserID(ctx)
+	err = d.RefreshCaptchaTokenAtLogin(GetAction(http.MethodGet, "https://api-drive.mypikpak.com/drive/v1/files"), d.Common.UserID)
+	if err != nil {
+		return err
+	}
 	// 更新UserAgent
 	d.Common.UserAgent = BuildCustomUserAgent(d.Common.DeviceID, ClientID, PackageName, SdkVersion, ClientVersion, PackageName, d.Common.UserID)
 	return nil
@@ -84,10 +103,8 @@ func (d *PikPakProxy) List(ctx context.Context, dir model.Obj, args model.ListAr
 
 func (d *PikPakProxy) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
 	var resp File
-	//_, err := d.request(fmt.Sprintf("https://api-drive.mypikpak.com/drive/v1/files/%s?_magic=2021&thumbnail_size=SIZE_LARGE", file.GetID()),http.MethodGet, nil, &resp)
-	_, err := d.requestWithCaptchaToken(fmt.Sprintf("https://api-drive.mypikpak.com/drive/v1/files/%s?_magic=2021&thumbnail_size=SIZE_LARGE", file.GetID()),
+	_, err := d.request(fmt.Sprintf("https://api-drive.mypikpak.com/drive/v1/files/%s?_magic=2021&thumbnail_size=SIZE_LARGE", file.GetID()),
 		http.MethodGet, nil, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -99,10 +116,13 @@ func (d *PikPakProxy) Link(ctx context.Context, file model.Obj, args model.LinkA
 		link.URL = resp.Medias[0].Link.Url
 	}
 
-	if strings.HasSuffix(d.ProxyUrl, "/") {
-		link.URL = d.ProxyUrl + link.URL
-	} else {
-		link.URL = d.ProxyUrl + "/" + link.URL
+	if d.Addition.UseProxy {
+		if strings.HasSuffix(d.Addition.ProxyUrl, "/") {
+			link.URL = d.Addition.ProxyUrl + link.URL
+		} else {
+			link.URL = d.Addition.ProxyUrl + "/" + link.URL
+		}
+
 	}
 
 	return &link, nil
@@ -140,25 +160,6 @@ func (d *PikPakProxy) Rename(ctx context.Context, srcObj model.Obj, newName stri
 	return err
 }
 
-func (d *PikPakProxy) Offline(ctx context.Context, args model.OtherArgs) (interface{}, error) {
-	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files", http.MethodPost, func(r *resty.Request) {
-		r.SetContext(ctx)
-		r.SetBody(&base.Json{
-			"kind":        "drive#file",
-			"name":        "",
-			"upload_type": "UPLOAD_TYPE_URL",
-			"url": &base.Json{
-				"url": args.Data,
-			},
-			"folder_type": "DOWNLOAD",
-		})
-	}, nil)
-	if err != nil {
-		return nil, err
-	}
-	return "ok", nil
-}
-
 func (d *PikPakProxy) Copy(ctx context.Context, srcObj, dstDir model.Obj) error {
 	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files:batchCopy", http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
@@ -172,8 +173,7 @@ func (d *PikPakProxy) Copy(ctx context.Context, srcObj, dstDir model.Obj) error 
 }
 
 func (d *PikPakProxy) Remove(ctx context.Context, obj model.Obj) error {
-	//https://api-drive.mypikpak.com/drive/v1/files:batchTrash
-	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files:batchDelete", http.MethodPost, func(req *resty.Request) {
+	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files:batchTrash", http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"ids": []string{obj.GetID()},
 		})
@@ -243,17 +243,90 @@ func (d *PikPakProxy) Put(ctx context.Context, dstDir model.Obj, stream model.Fi
 	return err
 }
 
-func (d *PikPakProxy) GetUserID(ctx context.Context) error {
-	url := "https://api-drive.mypikpak.com/vip/v1/vip/info"
-	var resp VipInfo
-	_, err := d.requestWithCaptchaToken(url, http.MethodGet, func(req *resty.Request) {
-		req.SetContext(ctx)
-	}, &resp)
-	if err != nil {
-		return fmt.Errorf("failed to get user id : %w", err)
+// 离线下载文件
+func (d *PikPakProxy) OfflineDownload(ctx context.Context, fileUrl string, parentDir model.Obj, fileName string) (*OfflineTask, error) {
+	requestBody := base.Json{
+		"kind":        "drive#file",
+		"name":        fileName,
+		"upload_type": "UPLOAD_TYPE_URL",
+		"url": base.Json{
+			"url": fileUrl,
+		},
+		"parent_id":   parentDir.GetID(),
+		"folder_type": "",
 	}
-	if resp.Data.UserID != "" {
-		d.Common.SetUserID(resp.Data.UserID)
+
+	var resp OfflineDownloadResp
+	_, err := d.request("https://api-drive.mypikpak.com/drive/v1/files", http.MethodPost, func(req *resty.Request) {
+		req.SetBody(requestBody)
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp.Task, err
+}
+
+/*
+获取离线下载任务列表
+phase 可能的取值：
+PHASE_TYPE_RUNNING, PHASE_TYPE_ERROR, PHASE_TYPE_COMPLETE, PHASE_TYPE_PENDING
+*/
+func (d *PikPakProxy) OfflineList(ctx context.Context, nextPageToken string, phase []string) ([]OfflineTask, error) {
+	res := make([]OfflineTask, 0)
+	url := "https://api-drive.mypikpak.com/drive/v1/tasks"
+
+	if len(phase) == 0 {
+		phase = []string{"PHASE_TYPE_RUNNING", "PHASE_TYPE_ERROR", "PHASE_TYPE_COMPLETE", "PHASE_TYPE_PENDING"}
+	}
+	params := map[string]string{
+		"type":           "offline",
+		"thumbnail_size": "SIZE_SMALL",
+		"limit":          "10000",
+		"page_token":     nextPageToken,
+		"with":           "reference_resource",
+	}
+
+	// 处理 phase 参数
+	if len(phase) > 0 {
+		filters := base.Json{
+			"phase": map[string]string{
+				"in": strings.Join(phase, ","),
+			},
+		}
+		filtersJSON, err := json.Marshal(filters)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal filters: %w", err)
+		}
+		params["filters"] = string(filtersJSON)
+	}
+
+	var resp OfflineListResp
+	_, err := d.request(url, http.MethodGet, func(req *resty.Request) {
+		req.SetContext(ctx).
+			SetQueryParams(params)
+	}, &resp)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get offline list: %w", err)
+	}
+	res = append(res, resp.Tasks...)
+	return res, nil
+}
+
+func (d *PikPakProxy) DeleteOfflineTasks(ctx context.Context, taskIDs []string, deleteFiles bool) error {
+	url := "https://api-drive.mypikpak.com/drive/v1/tasks"
+	params := map[string]string{
+		"task_ids":     strings.Join(taskIDs, ","),
+		"delete_files": strconv.FormatBool(deleteFiles),
+	}
+	_, err := d.request(url, http.MethodDelete, func(req *resty.Request) {
+		req.SetContext(ctx).
+			SetQueryParams(params)
+	}, nil)
+	if err != nil {
+		return fmt.Errorf("failed to delete tasks %v: %w", taskIDs, err)
 	}
 	return nil
 }

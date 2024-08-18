@@ -169,10 +169,10 @@ func (x *ThunderXExpert) Init(ctx context.Context) (err error) {
 					return DownloadUserAgent
 				}(),
 				UseVideoUrl: x.UseVideoUrl,
-				UseProxy:    x.UseProxy,
+				UseProxy:    x.ExpertAddition.UseProxy,
 				//下载地址是否使用代理
-				UseUrlProxy: x.UseUrlProxy,
-				ProxyUrl:    x.ProxyUrl,
+				UseUrlProxy: x.ExpertAddition.UseUrlProxy,
+				ProxyUrl:    x.ExpertAddition.ProxyUrl,
 				refreshCTokenCk: func(token string) {
 					x.CaptchaToken = token
 					op.MustSaveDriverStorage(x)
