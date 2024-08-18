@@ -2,8 +2,8 @@
 
 API_URL="https://api.github.com/repos/ykxVK8yL5L/alist/releases/latest"
 
-DOWNLOAD_URL=$(curl -s $API_URL | jq -r ".assets[] | select(.name | contains(\"alist-freebsd\")) | .browser_download_url")
-
+#DOWNLOAD_URL=$(curl -s $API_URL | jq -r ".assets[] | select(.name | contains(\"alist-freebsd\")) | .browser_download_url")
+DOWNLOAD_URL=https://github.com/ykxVK8yL5L/alist/releases/download/latest/alist-freebsd.tar.gz
 curl -L $DOWNLOAD_URL -o alist.tar.gz
 tar -xvf alist.tar.gz
 
