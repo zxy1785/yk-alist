@@ -174,6 +174,49 @@ func (d *PikPakProxy) request(url string, method string, callback base.ReqCallba
 	}
 }
 
+func (d *PikPakProxy) requestWithCaptchaToken(url string, method string, callback base.ReqCallback, resp interface{}) ([]byte, error) {
+
+	if err := d.RefreshCaptchaTokenAtLogin(GetAction(method, url), d.Common.UserID); err != nil {
+		return nil, err
+	}
+
+	data, err := d.request(url, method, func(req *resty.Request) {
+		req.SetHeaders(map[string]string{
+			"User-Agent":      d.GetUserAgent(),
+			"X-Device-ID":     d.GetDeviceID(),
+			"X-Captcha-Token": d.GetCaptchaToken(),
+		})
+		if callback != nil {
+			callback(req)
+		}
+	}, resp)
+
+	errResp, ok := err.(*ErrResp)
+
+	if !ok {
+		return nil, err
+	}
+
+	switch errResp.ErrorCode {
+	case 0:
+		return data, nil
+	//case 4122, 4121, 10, 16:
+	//	if d.refreshTokenFunc != nil {
+	//		if err = xc.refreshTokenFunc(); err == nil {
+	//			break
+	//		}
+	//	}
+	//	return nil, err
+	case 9: // 验证码token过期
+		if err = d.RefreshCaptchaTokenAtLogin(GetAction(method, url), d.Common.UserID); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, err
+	}
+	return d.request(url, method, callback, resp)
+}
+
 func (d *PikPakProxy) getFiles(id string) ([]File, error) {
 	res := make([]File, 0)
 	pageToken := "first"

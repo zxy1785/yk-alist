@@ -103,11 +103,16 @@ func (d *PikPakProxy) List(ctx context.Context, dir model.Obj, args model.ListAr
 
 func (d *PikPakProxy) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
 	var resp File
-	_, err := d.request(fmt.Sprintf("https://api-drive.mypikpak.com/drive/v1/files/%s?_magic=2021&thumbnail_size=SIZE_LARGE", file.GetID()),
+	_, err := d.requestWithCaptchaToken(fmt.Sprintf("https://api-drive.mypikpak.com/drive/v1/files/%s?_magic=2021&thumbnail_size=SIZE_LARGE", file.GetID()),
 		http.MethodGet, nil, &resp)
 	if err != nil {
 		return nil, err
 	}
+	// _, err := d.request(fmt.Sprintf("https://api-drive.mypikpak.com/drive/v1/files/%s?_magic=2021&thumbnail_size=SIZE_LARGE", file.GetID()),
+	// 	http.MethodGet, nil, &resp)
+	// if err != nil {
+	// 	return nil, err
+	// }
 	link := model.Link{
 		URL: resp.WebContentLink,
 	}
