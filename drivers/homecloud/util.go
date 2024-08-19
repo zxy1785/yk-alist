@@ -139,6 +139,7 @@ func (d *HomeCloud) request(pathname string, method string, callback base.ReqCal
 	//fmt.Println(string(res.Body()))
 	return res.Body(), nil
 }
+
 func (d *HomeCloud) post(pathname string, data interface{}, resp interface{}) ([]byte, error) {
 	return d.request(pathname, http.MethodPost, func(req *resty.Request) {
 		req.SetBody(data)

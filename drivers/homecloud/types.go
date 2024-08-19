@@ -241,13 +241,15 @@ type PersonalPartInfo struct {
 }
 
 type PersonalUploadResp struct {
-	BaseResp
+	FrontResp
 	Data struct {
-		FileId      string             `json:"fileId"`
-		PartInfos   []PersonalPartInfo `json:"partInfos"`
-		Exist       bool               `json:"exist"`
-		RapidUpload bool               `json:"rapidUpload"`
-		UploadId    string             `json:"uploadId"`
+		Ret         int    `json:"ret"`
+		Reason      string `json:"reason"`
+		UploadId    string `json:"uploadId"`
+		UploadState int    `json:"uploadState"`
+		ExpireTime  string `json:"expireTime"`
+		FileId      string `json:"fileId"`
+		UploadUrl   string `json:"uploadUrl"`
 	}
 }
 

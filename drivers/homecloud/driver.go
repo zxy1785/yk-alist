@@ -1,11 +1,18 @@
 package homecloud
 
 import (
+	"bytes"
 	"context"
+	"crypto/md5"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/alist-org/alist/v3/drivers/base"
 	"github.com/alist-org/alist/v3/internal/driver"
@@ -13,8 +20,7 @@ import (
 	"github.com/alist-org/alist/v3/internal/model"
 	"github.com/alist-org/alist/v3/pkg/cron"
 	"github.com/alist-org/alist/v3/pkg/utils"
-	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
+	"github.com/alist-org/alist/v3/pkg/utils/random"
 )
 
 type HomeCloud struct {
@@ -112,16 +118,18 @@ func (d *HomeCloud) Rename(ctx context.Context, srcObj model.Obj, newName string
 }
 
 func (d *HomeCloud) Copy(ctx context.Context, srcObj, dstDir model.Obj) error {
-	data := base.Json{
-		"fileIds":       []string{srcObj.GetID()},
-		"targetDirId":   dstDir.GetID(),
-		"targetGroupId": d.GroupID,
-		"userId":        d.UserID,
-		"groupId":       d.GroupID,
-	}
-	pathname := "/storage/batchCopyFile/v1"
-	_, err := d.post(pathname, data, nil)
-	return err
+	// 复制会占用空间 所以先屏蔽代码
+	// data := base.Json{
+	// 	"fileIds":       []string{srcObj.GetID()},
+	// 	"targetDirId":   dstDir.GetID(),
+	// 	"targetGroupId": d.GroupID,
+	// 	"userId":        d.UserID,
+	// 	"groupId":       d.GroupID,
+	// }
+	// pathname := "/storage/batchCopyFile/v1"
+	// _, err := d.post(pathname, data, nil)
+	// return err
+	return errs.NotImplement
 }
 
 func (d *HomeCloud) Remove(ctx context.Context, obj model.Obj) error {
@@ -146,197 +154,155 @@ const (
 func getPartSize(size int64) int64 {
 	// 网盘对于分片数量存在上限
 	if size/GB > 30 {
-		return 512 * MB
+		return 20 * MB
 	}
-	return 100 * MB
+	return 2 * MB
 }
 
 func (d *HomeCloud) Put(ctx context.Context, dstDir model.Obj, stream model.FileStreamer, up driver.UpdateProgress) error {
-	switch d.Addition.Type {
-	case MetaPersonalNew:
-		var err error
-		fullHash := stream.GetHash().GetHash(utils.SHA256)
-		if len(fullHash) <= 0 {
-			tmpF, err := stream.CacheFullInTempFile()
-			if err != nil {
-				return err
-			}
-			fullHash, err = utils.HashFile(utils.SHA256, tmpF)
-			if err != nil {
-				return err
-			}
-		}
-		// return errs.NotImplement
-		data := base.Json{
-			"contentHash":          fullHash,
-			"contentHashAlgorithm": "SHA256",
-			"contentType":          "application/octet-stream",
-			"parallelUpload":       false,
-			"partInfos": []base.Json{{
-				"parallelHashCtx": base.Json{
-					"partOffset": 0,
-				},
-				"partNumber": 1,
-				"partSize":   stream.GetSize(),
-			}},
-			"size":           stream.GetSize(),
-			"parentFileId":   dstDir.GetID(),
-			"name":           stream.GetName(),
-			"type":           "file",
-			"fileRenameMode": "auto_rename",
-		}
-		pathname := "/hcy/file/create"
-		var resp PersonalUploadResp
-		_, err = d.personalPost(pathname, data, &resp)
-		if err != nil {
-			return err
+	var err error
+
+	h := md5.New()
+	// need to calculate md5 of the full content
+	tempFile, err := stream.CacheFullInTempFile()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tempFile.Close()
+	}()
+	if _, err = io.Copy(h, tempFile); err != nil {
+		return err
+	}
+	_, err = tempFile.Seek(0, io.SeekStart)
+	if err != nil {
+		return err
+	}
+	etag := hex.EncodeToString(h.Sum(nil))
+
+	// return errs.NotImplement
+	data := base.Json{
+		"userId":       d.UserID,
+		"groupId":      d.GroupID,
+		"dirId":        dstDir.GetID(),
+		"fileName":     stream.GetName(),
+		"fileMd5":      etag,
+		"fileSize":     stream.GetSize(),
+		"fileCategory": 99,
+	}
+
+	pathname := "/storage/addFileUploadTask/v1"
+	var resp PersonalUploadResp
+	_, err = d.post(pathname, data, &resp)
+	if err != nil {
+		return err
+	}
+
+	// Progress
+	//p := driver.NewProgress(stream.GetSize(), up)
+
+	var partSize = getPartSize(stream.GetSize())
+	part := (stream.GetSize() + partSize - 1) / partSize
+	if part == 0 {
+		part = 1
+	}
+	for i := int64(0); i < part; i++ {
+		if utils.IsCanceled(ctx) {
+			return ctx.Err()
 		}
 
-		if resp.Data.Exist || resp.Data.RapidUpload {
-			return nil
+		start := i * partSize
+		byteSize := stream.GetSize() - start
+		if byteSize > partSize {
+			byteSize = partSize
 		}
 
-		// Progress
-		p := driver.NewProgress(stream.GetSize(), up)
-
+		limitReader := io.LimitReader(stream, byteSize)
 		// Update Progress
-		r := io.TeeReader(stream, p)
+		//r := io.TeeReader(limitReader, p)
 
-		req, err := http.NewRequest("PUT", resp.Data.PartInfos[0].UploadUrl, r)
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		filePart, err := writer.CreateFormFile("partFile", stream.GetName())
 		if err != nil {
 			return err
 		}
+		_, err = io.Copy(filePart, limitReader)
+		if err != nil {
+			return err
+		}
+
+		isDone := false
+
+		if i == (part - 1) {
+			isDone = true
+		}
+
+		_ = writer.WriteField("uploadId", resp.Data.UploadId)
+		_ = writer.WriteField("isComplete", strconv.FormatBool(isDone))
+		_ = writer.WriteField("rangeStart", strconv.Itoa(int(start)))
+
+		err = writer.Close()
+		if err != nil {
+			return err
+		}
+
+		req, err := http.NewRequest("POST", resp.Data.UploadUrl, body)
+		if err != nil {
+			return err
+		}
+		requestID := random.String(12)
+		pbody, err := utils.Json.Marshal(body)
+
+		if err != nil {
+			return err
+		}
+
+		timestamp := fmt.Sprintf("%.3f", float64(time.Now().UnixNano())/1e6)
+		h := sha1.New()
+		var sha1Hash string
+
+		if pbody == nil {
+			h.Write([]byte("{}"))
+			sha1Hash = strings.ToUpper(hex.EncodeToString(h.Sum(nil)))
+		} else {
+			h.Write(pbody)
+			sha1Hash = strings.ToUpper(hex.EncodeToString(h.Sum(nil)))
+		}
+
+		uppathname := "/upload/upload/uploadFilePart/v1"
+		encStr := fmt.Sprintf("%s;%s;%s;Bearer %s;%s", uppathname, sha1Hash, requestID, d.Authorization, timestamp)
+		signature := strings.ToUpper(fmt.Sprintf("%x", md5.Sum([]byte(encStr))))
+
 		req = req.WithContext(ctx)
-		req.Header.Set("Content-Type", "application/octet-stream")
-		req.Header.Set("Content-Length", fmt.Sprint(stream.GetSize()))
-		req.Header.Set("Origin", "https://yun.139.com")
-		req.Header.Set("Referer", "https://yun.139.com/")
-		req.ContentLength = stream.GetSize()
+		req.Header.Add("Accept", "*/*")
+		req.Header.Add("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+		req.Header.Add("Authorization", "Bearer "+d.Authorization)
+		req.Header.Add("Origin", "https://homecloud.komect.com")
+		req.Header.Add("Referer", "https://homecloud.komect.com/disk/main/familyspace")
+		req.Header.Add("Request-Id", requestID)
+		req.Header.Add("Signature", signature)
+		req.Header.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36")
+		req.Header.Add("X-Requested-With", "XMLHttpRequest")
+		req.Header.Add("X-User-Agent", "Web|Chrome 127.0.0.0||OS X|homecloudWebDisk_1.1.1||yunpan 1.1.1|unknown")
+		req.Header.Add("sec-ch-ua", "\"Not)A;Brand\";v=\"99\", \"Google Chrome\";v=\"127\", \"Chromium\";v=\"127\"")
+		req.Header.Add("sec-ch-ua-mobile", "?0")
+		req.Header.Add("sec-ch-ua-platform", "\"macOS\"")
+		req.Header.Add("userId", d.UserID)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
 
 		res, err := base.HttpClient.Do(req)
 		if err != nil {
 			return err
 		}
-
 		_ = res.Body.Close()
-		log.Debugf("%+v", res)
+		//log.Debugf("%+v", res)
 		if res.StatusCode != http.StatusOK {
 			return fmt.Errorf("unexpected status code: %d", res.StatusCode)
 		}
 
-		data = base.Json{
-			"contentHash":          fullHash,
-			"contentHashAlgorithm": "SHA256",
-			"fileId":               resp.Data.FileId,
-			"uploadId":             resp.Data.UploadId,
-		}
-		_, err = d.personalPost("/hcy/file/complete", data, nil)
-		if err != nil {
-			return err
-		}
-		return nil
-	case MetaPersonal:
-		fallthrough
-	case MetaFamily:
-		data := base.Json{
-			"manualRename": 2,
-			"operation":    0,
-			"fileCount":    1,
-			"totalSize":    0, // 去除上传大小限制
-			"uploadContentList": []base.Json{{
-				"contentName": stream.GetName(),
-				"contentSize": 0, // 去除上传大小限制
-				// "digest": "5a3231986ce7a6b46e408612d385bafa"
-			}},
-			"parentCatalogID": dstDir.GetID(),
-			"newCatalogName":  "",
-			"commonAccountInfo": base.Json{
-				"account":     d.Account,
-				"accountType": 1,
-			},
-		}
-		pathname := "/orchestration/personalCloud/uploadAndDownload/v1.0/pcUploadFileRequest"
-		if d.isFamily() {
-			cataID := dstDir.GetID()
-			path := cataID
-			seqNo, _ := uuid.NewUUID()
-			data = base.Json{
-				"cloudID":      d.CloudID,
-				"path":         path,
-				"operation":    0,
-				"cloudType":    1,
-				"catalogType":  3,
-				"manualRename": 2,
-				"fileCount":    1,
-				"totalSize":    0,
-				"uploadContentList": []base.Json{{
-					"contentName": stream.GetName(),
-					"contentSize": 0,
-				}},
-				"seqNo": seqNo,
-				"commonAccountInfo": base.Json{
-					"account":     d.Account,
-					"accountType": 1,
-				},
-			}
-			pathname = "/orchestration/familyCloud-rebuild/content/v1.0/getFileUploadURL"
-			//return errs.NotImplement
-		}
-		var resp UploadResp
-		_, err := d.post(pathname, data, &resp)
-		if err != nil {
-			return err
-		}
-		// Progress
-		p := driver.NewProgress(stream.GetSize(), up)
-
-		var partSize = getPartSize(stream.GetSize())
-		part := (stream.GetSize() + partSize - 1) / partSize
-		if part == 0 {
-			part = 1
-		}
-		for i := int64(0); i < part; i++ {
-			if utils.IsCanceled(ctx) {
-				return ctx.Err()
-			}
-
-			start := i * partSize
-			byteSize := stream.GetSize() - start
-			if byteSize > partSize {
-				byteSize = partSize
-			}
-
-			limitReader := io.LimitReader(stream, byteSize)
-			// Update Progress
-			r := io.TeeReader(limitReader, p)
-			req, err := http.NewRequest("POST", resp.Data.UploadResult.RedirectionURL, r)
-			if err != nil {
-				return err
-			}
-
-			req = req.WithContext(ctx)
-			req.Header.Set("Content-Type", "text/plain;name="+unicode(stream.GetName()))
-			req.Header.Set("contentSize", strconv.FormatInt(stream.GetSize(), 10))
-			req.Header.Set("range", fmt.Sprintf("bytes=%d-%d", start, start+byteSize-1))
-			req.Header.Set("uploadtaskID", resp.Data.UploadResult.UploadTaskID)
-			req.Header.Set("rangeType", "0")
-			req.ContentLength = byteSize
-
-			res, err := base.HttpClient.Do(req)
-			if err != nil {
-				return err
-			}
-			_ = res.Body.Close()
-			log.Debugf("%+v", res)
-			if res.StatusCode != http.StatusOK {
-				return fmt.Errorf("unexpected status code: %d", res.StatusCode)
-			}
-		}
-
-		return nil
-	default:
-		return errs.NotImplement
 	}
+	return nil
 }
 
 func (d *HomeCloud) Other(ctx context.Context, args model.OtherArgs) (interface{}, error) {
