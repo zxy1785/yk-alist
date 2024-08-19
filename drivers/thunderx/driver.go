@@ -361,6 +361,35 @@ func (xc *XunLeiXCommon) Rename(ctx context.Context, srcObj model.Obj, newName s
 	return err
 }
 
+func (xc *XunLeiXCommon) Offline(ctx context.Context, args model.OtherArgs) (interface{}, error) {
+	_, err := xc.Request(FILE_API_URL, http.MethodPost, func(r *resty.Request) {
+		r.SetContext(ctx)
+		r.SetHeaders(map[string]string{
+			"X-Device-Id": xc.DeviceID,
+			"User-Agent":  xc.UserAgent,
+			"Peer-Id":     xc.DeviceID,
+			"client_id":   xc.ClientID,
+			"x-client-id": xc.ClientID,
+			"X-Guid":      xc.DeviceID,
+		})
+		r.SetBody(&base.Json{
+			"kind":        "drive#file",
+			"name":        "",
+			"parent_id":   args.Obj.GetID(),
+			"upload_type": "UPLOAD_TYPE_URL",
+			"url": &base.Json{
+				"url":       args.Data,
+				"params":    "{}",
+				"parent_id": args.Obj.GetID(),
+			},
+		})
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	return "ok", nil
+}
+
 func (xc *XunLeiXCommon) Copy(ctx context.Context, srcObj, dstDir model.Obj) error {
 	_, err := xc.Request(FILE_API_URL+":batchCopy", http.MethodPost, func(r *resty.Request) {
 		r.SetContext(ctx)
