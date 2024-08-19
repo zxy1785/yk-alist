@@ -199,7 +199,7 @@ func (d *HomeCloud) Put(ctx context.Context, dstDir model.Obj, stream model.File
 	}
 
 	// Progress
-	//p := driver.NewProgress(stream.GetSize(), up)
+	p := driver.NewProgress(stream.GetSize(), up)
 
 	var partSize = getPartSize(stream.GetSize())
 	part := (stream.GetSize() + partSize - 1) / partSize
@@ -219,6 +219,8 @@ func (d *HomeCloud) Put(ctx context.Context, dstDir model.Obj, stream model.File
 
 		limitReader := io.LimitReader(stream, byteSize)
 		// Update Progress
+		r := io.TeeReader(limitReader, p)
+		// Update Progress
 		//r := io.TeeReader(limitReader, p)
 
 		body := &bytes.Buffer{}
@@ -227,7 +229,7 @@ func (d *HomeCloud) Put(ctx context.Context, dstDir model.Obj, stream model.File
 		if err != nil {
 			return err
 		}
-		_, err = io.Copy(filePart, limitReader)
+		_, err = io.Copy(filePart, r)
 		if err != nil {
 			return err
 		}
