@@ -257,14 +257,38 @@ func (d *HomeCloud) familyGetFiles(catalogID string) ([]model.Obj, error) {
 				isfolder = true
 			}
 
+			ctimestamp, err := strconv.ParseInt(content.CreateTime, 10, 64)
+			if err != nil {
+				fmt.Println("Error parsing timestamp:", err)
+				return nil, err
+			}
+
+			mtimestamp, err := strconv.ParseInt(content.UpdateTime, 10, 64)
+			if err != nil {
+				fmt.Println("Error parsing timestamp:", err)
+				return nil, err
+			}
+
+			// 转换为秒和纳秒
+			cseconds := ctimestamp / 1000
+			cnanoseconds := (ctimestamp % 1000) * 1000000
+
+			// 转换为秒和纳秒
+			mseconds := mtimestamp / 1000
+			mnanoseconds := (mtimestamp % 1000) * 1000000
+
+			// 创建 time.Time 对象
+			ct := time.Unix(cseconds, cnanoseconds)
+			mt := time.Unix(mseconds, mnanoseconds)
+
 			f := model.ObjThumb{
 				Object: model.Object{
 					ID:       content.ID,
 					Name:     content.Name,
 					Size:     filesize,
 					IsFolder: isfolder,
-					Modified: getTime(content.UpdateTime),
-					Ctime:    getTime(content.CreateTime),
+					Modified: mt,
+					Ctime:    ct,
 				},
 			}
 			files = append(files, &f)
