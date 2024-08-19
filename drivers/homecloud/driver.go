@@ -154,9 +154,9 @@ const (
 func getPartSize(size int64) int64 {
 	// 网盘对于分片数量存在上限
 	if size/GB > 30 {
-		return 20 * MB
+		return 512 * MB
 	}
-	return 2 * MB
+	return 100 * MB
 }
 
 func (d *HomeCloud) Put(ctx context.Context, dstDir model.Obj, stream model.FileStreamer, up driver.UpdateProgress) error {
