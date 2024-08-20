@@ -26,7 +26,7 @@ import (
 
 // do others that not defined in Driver interface
 func (d *HomeCloud) isFamily() bool {
-	return d.Type == "family"
+	return false
 }
 
 func encodeURIComponent(str string) string {
@@ -57,27 +57,65 @@ func getTime(t string) time.Time {
 }
 
 func (d *HomeCloud) refreshToken() error {
-	url := "https://aas.caiyun.feixin.10086.cn:443/tellin/authTokenRefresh.do"
+	pathname := "/auth/refreshToken/v2"
+	url := "https://homecloud.komect.com/front" + pathname
+
+	data := base.Json{
+		"refresh_token": d.RefreshToken,
+		"scope":         "sdk",
+	}
+
+	requestID := random.String(12)
+	body, err := utils.Json.Marshal(data)
+
+	if err != nil {
+		return err
+	}
+
+	timestamp := fmt.Sprintf("%.3f", float64(time.Now().UnixNano())/1e6)
+	h := sha1.New()
+	var sha1Hash string
+
+	if body == nil {
+		h.Write([]byte("{}"))
+		sha1Hash = strings.ToUpper(hex.EncodeToString(h.Sum(nil)))
+	} else {
+		h.Write(body)
+		sha1Hash = strings.ToUpper(hex.EncodeToString(h.Sum(nil)))
+	}
+
+	encStr := fmt.Sprintf("%s;%s;%s;Basic VTdUOU1xSHpVbklqeWdETzppQzZCU25QaExyODZGZmJX;%s", pathname, sha1Hash, requestID, timestamp)
+	signature := strings.ToUpper(fmt.Sprintf("%x", md5.Sum([]byte(encStr))))
+
 	var resp RefreshTokenResp
-	decode, err := base64.StdEncoding.DecodeString(d.Authorization)
+	var e FrontResp
+	req := base.RestyClient.R()
+	req.SetHeaders(map[string]string{
+		"Accept":        "application/json, text/plain, */*",
+		"Authorization": "Basic VTdUOU1xSHpVbklqeWdETzppQzZCU25QaExyODZGZmJX",
+		"Content-Type":  "application/json",
+		"X-User-Agent":  "Web|Chrome 127.0.0.0||OS X|homecloudWebDisk_1.1.1||yunpan 1.1.1|unknown",
+		"Timestamp":     timestamp,
+		"Signature":     signature,
+		"Request-Id":    requestID,
+		"userId":        "",
+	})
+	req.SetBody(data)
+	req.SetResult(&resp)
+	req.SetError(&e)
+	_, err = req.Post(url)
+	//fmt.Println(string(res.Body()))
+
 	if err != nil {
 		return err
 	}
-	decodeStr := string(decode)
-	splits := strings.Split(decodeStr, ":")
-	reqBody := "<root><token>" + splits[2] + "</token><account>" + splits[1] + "</account><clienttype>656</clienttype></root>"
-	_, err = base.RestyClient.R().
-		ForceContentType("application/xml").
-		SetBody(reqBody).
-		SetResult(&resp).
-		Post(url)
-	if err != nil {
-		return err
+	// if e.Ret != 200 {
+	// 	return fmt.Errorf("failed to refresh token: %s", e.Reason)
+	// }
+	if resp.Data.RefreshToken == "" {
+		return errors.New("failed to refresh token: refresh token is empty")
 	}
-	if resp.Return != "0" {
-		return fmt.Errorf("failed to refresh token: %s", resp.Desc)
-	}
-	d.Authorization = base64.StdEncoding.EncodeToString([]byte(splits[0] + ":" + splits[1] + ":" + resp.Token))
+	d.RefreshToken, d.AccessToken, d.UserID = resp.Data.RefreshToken, resp.Data.AccessToken, resp.Data.UserID
 	op.MustSaveDriverStorage(d)
 	return nil
 }
@@ -108,12 +146,12 @@ func (d *HomeCloud) request(pathname string, method string, callback base.ReqCal
 		sha1Hash = strings.ToUpper(hex.EncodeToString(h.Sum(nil)))
 	}
 
-	encStr := fmt.Sprintf("%s;%s;%s;Bearer %s;%s", pathname, sha1Hash, requestID, d.Authorization, timestamp)
+	encStr := fmt.Sprintf("%s;%s;%s;Bearer %s;%s", pathname, sha1Hash, requestID, d.AccessToken, timestamp)
 	signature := strings.ToUpper(fmt.Sprintf("%x", md5.Sum([]byte(encStr))))
 
 	req.SetHeaders(map[string]string{
 		"Accept":        "application/json, text/plain, */*",
-		"Authorization": "Bearer " + d.Authorization,
+		"Authorization": "Bearer " + d.AccessToken,
 		"Content-Type":  "application/json",
 		"X-User-Agent":  "Web|Chrome 127.0.0.0||OS X|homecloudWebDisk_1.1.1||yunpan 1.1.1|unknown",
 		"Timestamp":     timestamp,
@@ -203,15 +241,7 @@ func (d *HomeCloud) getFiles(catalogID string) ([]model.Obj, error) {
 }
 
 func (d *HomeCloud) newJson(data map[string]interface{}) base.Json {
-	common := map[string]interface{}{
-		"catalogType": 3,
-		"cloudID":     d.CloudID,
-		"cloudType":   1,
-		"commonAccountInfo": base.Json{
-			"account":     d.Account,
-			"accountType": 1,
-		},
-	}
+	common := map[string]interface{}{}
 	return utils.MergeMap(data, common)
 }
 
@@ -349,7 +379,7 @@ func (d *HomeCloud) personalRequest(pathname string, method string, callback bas
 	}
 	req.SetHeaders(map[string]string{
 		"Accept":               "application/json, text/plain, */*",
-		"Authorization":        "Basic " + d.Authorization,
+		"Authorization":        "Basic " + d.AccessToken,
 		"Caller":               "web",
 		"Cms-Device":           "default",
 		"Mcloud-Channel":       "1000101",

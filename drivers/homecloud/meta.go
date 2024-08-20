@@ -8,11 +8,8 @@ import (
 // https://homecloud.komect.com/
 type Addition struct {
 	//Account       string `json:"account" required:"true"`
-	Authorization string `json:"authorization" type:"text" required:"true"`
+	RefreshToken string `json:"refresh_token" required:"true"`
 	driver.RootID
-	Type    string `json:"type" type:"select" options:"personal,family,personal_new" default:"personal"`
-	CloudID string `json:"cloud_id"`
-	UserID  string `json:"userId"  required:"true"`
 	GroupID string `json:"groupId" required:"true"`
 }
 

@@ -26,8 +26,10 @@ import (
 type HomeCloud struct {
 	model.Storage
 	Addition
-	cron    *cron.Cron
-	Account string
+	AccessToken string
+	UserID      string
+	cron        *cron.Cron
+	Account     string
 }
 
 func (d *HomeCloud) Config() driver.Config {
@@ -39,17 +41,27 @@ func (d *HomeCloud) GetAddition() driver.Additional {
 }
 
 func (d *HomeCloud) Init(ctx context.Context) error {
-	if d.Authorization == "" {
-		return fmt.Errorf("authorization is empty")
-	}
-	if d.UserID == "" {
-		return fmt.Errorf("UserID is empty")
-	}
-	if d.GroupID == "" {
-		return fmt.Errorf("GroupID is empty")
+	if d.RefreshToken == "" {
+		return fmt.Errorf("RefreshToken is empty")
 	}
 
-	d.RootFolderID = "/"
+	if len(d.Addition.RootFolderID) == 0 {
+		d.RootFolderID = "/"
+	}
+
+	err := d.refreshToken()
+	if err != nil {
+		return err
+	}
+
+	d.cron = cron.NewCron(time.Hour * 10)
+	d.cron.Do(func() {
+		err := d.refreshToken()
+		if err != nil {
+			return
+		}
+	})
+
 	return nil
 }
 
@@ -71,7 +83,17 @@ func (d *HomeCloud) Link(ctx context.Context, file model.Obj, args model.LinkArg
 	if err != nil {
 		return nil, err
 	}
-	return &model.Link{URL: url}, nil
+
+	link := &model.Link{
+		URL: url,
+	}
+
+	// 创建Header 否则新上传文件无法使用
+	header := make(http.Header)
+	header.Add("Cookie", "H_TOKEN="+d.AccessToken)
+	link.Header = header
+
+	return link, nil
 }
 
 func (d *HomeCloud) MakeDir(ctx context.Context, parentDir model.Obj, dirName string) error {
@@ -273,13 +295,13 @@ func (d *HomeCloud) Put(ctx context.Context, dstDir model.Obj, stream model.File
 		}
 
 		uppathname := "/upload/upload/uploadFilePart/v1"
-		encStr := fmt.Sprintf("%s;%s;%s;Bearer %s;%s", uppathname, sha1Hash, requestID, d.Authorization, timestamp)
+		encStr := fmt.Sprintf("%s;%s;%s;Bearer %s;%s", uppathname, sha1Hash, requestID, d.AccessToken, timestamp)
 		signature := strings.ToUpper(fmt.Sprintf("%x", md5.Sum([]byte(encStr))))
 
 		req = req.WithContext(ctx)
 		req.Header.Add("Accept", "*/*")
 		req.Header.Add("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
-		req.Header.Add("Authorization", "Bearer "+d.Authorization)
+		req.Header.Add("Authorization", "Bearer "+d.AccessToken)
 		req.Header.Add("Origin", "https://homecloud.komect.com")
 		req.Header.Add("Referer", "https://homecloud.komect.com/disk/main/familyspace")
 		req.Header.Add("Request-Id", requestID)
@@ -304,32 +326,25 @@ func (d *HomeCloud) Put(ctx context.Context, dstDir model.Obj, stream model.File
 		}
 
 	}
+
+	// url, err := d.getLink(resp.Data.FileId)
+	// if err != nil {
+	// 	return fmt.Errorf("can not get file donwnload url")
+	// }
+
+	// _, err = base.RestyClient.R().
+	// 	SetHeader("Cookie", "H_TOKEN="+d.AccessToken).
+	// 	SetHeader("Range", "bytes=0-100").
+	// 	Get(url)
+	// if err != nil {
+	// 	return fmt.Errorf("can not active file")
+	// }
+
 	return nil
 }
 
 func (d *HomeCloud) Other(ctx context.Context, args model.OtherArgs) (interface{}, error) {
-	switch d.Addition.Type {
-	case MetaPersonalNew:
-		var resp base.Json
-		var uri string
-		data := base.Json{
-			"category": "video",
-			"fileId":   args.Obj.GetID(),
-		}
-		switch args.Method {
-		case "video_preview":
-			uri = "/hcy/videoPreview/getPreviewInfo"
-		default:
-			return nil, errs.NotSupport
-		}
-		_, err := d.personalPost(uri, data, &resp)
-		if err != nil {
-			return nil, err
-		}
-		return resp["data"], nil
-	default:
-		return nil, errs.NotImplement
-	}
+	return nil, errs.NotImplement
 }
 
 var _ driver.Driver = (*HomeCloud)(nil)

@@ -1,9 +1,5 @@
 package homecloud
 
-import (
-	"encoding/xml"
-)
-
 const (
 	MetaPersonal    string = "personal"
 	MetaFamily      string = "family"
@@ -254,10 +250,16 @@ type PersonalUploadResp struct {
 }
 
 type RefreshTokenResp struct {
-	XMLName     xml.Name `xml:"root"`
-	Return      string   `xml:"return"`
-	Token       string   `xml:"token"`
-	Expiretime  int32    `xml:"expiretime"`
-	AccessToken string   `xml:"accessToken"`
-	Desc        string   `xml:"desc"`
+	FrontResp
+	Data struct {
+		Ret          int    `json:"ret"`
+		ExpiresIn    int    `json:"expiresIn"`
+		License      string `json:"license"`
+		Scope        string `json:"scope"`
+		UserType     int    `json:"userType"`
+		AccessToken  string `json:"accessToken"`
+		TokenType    string `json:"tokenType"`
+		UserID       string `json:"userId"`
+		RefreshToken string `json:"refreshToken"`
+	}
 }
