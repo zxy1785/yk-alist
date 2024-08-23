@@ -247,9 +247,9 @@ func (d *HomeCloud) newJson(data map[string]interface{}) base.Json {
 
 func (d *HomeCloud) familyGetFiles(catalogID string) ([]model.Obj, error) {
 
-	if strings.Contains(catalogID, "/") {
-		catalogID = "0"
-	}
+	// if strings.Contains(catalogID, "/") {
+	// 	catalogID = "0"
+	// }
 
 	pageNum := 1
 	files := make([]model.Obj, 0)
