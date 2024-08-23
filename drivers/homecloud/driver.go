@@ -46,7 +46,7 @@ func (d *HomeCloud) Init(ctx context.Context) error {
 	}
 
 	if len(d.Addition.RootFolderID) == 0 {
-		d.RootFolderID = "/"
+		d.RootFolderID = "0"
 	}
 
 	err := d.refreshToken()
