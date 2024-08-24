@@ -100,6 +100,11 @@ English | [中文](./README_cn.md)| [日本語](./README_ja.md) | [Contributing]
 
 <https://alist.nn.ci/>
 
+## Linux安装脚本
+```
+curl -fsSL "https://mirror.ghproxy.com/https://raw.githubusercontent.com/ykxVK8yL5L/alist/main/linux.sh" | bash -s install
+```
+
 ## Serv00
 ```
 wget -O alist-freebsd.sh https://raw.githubusercontent.com/ykxVK8yL5L/alist/main/serv00.sh && sh alist-freebsd.sh
