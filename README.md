@@ -110,9 +110,9 @@ curl -fsSL "https://mirror.ghproxy.com/https://raw.githubusercontent.com/ykxVK8y
 wget -O alist-freebsd.sh https://raw.githubusercontent.com/ykxVK8yL5L/alist/main/serv00.sh && sh alist-freebsd.sh
 ```
 
-## Docker
+## Docker 配置文件路径 /opt/alist
 ```
-docker run  --name="alist" -p 10021:5244 -v ~/alist:/opt/alist/data -e ALIST_ADMIN_PASSWORD='admin' ykxvk8yl5l/alist:latest
+docker run  --name="alist" -p 10021:5244 -v /opt/alist:/opt/alist/data -e ALIST_ADMIN_PASSWORD='admin' ykxvk8yl5l/alist:latest
 ```
 
 ## Demo
