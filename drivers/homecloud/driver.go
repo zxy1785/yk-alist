@@ -161,6 +161,14 @@ func (d *HomeCloud) Remove(ctx context.Context, obj model.Obj) error {
 		"groupId": d.GroupID,
 	}
 	pathname := "/storage/batchDeleteFile/v1"
+	if obj.IsDir() {
+		data = base.Json{
+			"fileId":  obj.GetID(),
+			"userId":  d.UserID,
+			"groupId": d.GroupID,
+		}
+		pathname = "/storage/deleteDirectory/v1"
+	}
 	_, err := d.post(pathname, data, nil)
 	return err
 }
