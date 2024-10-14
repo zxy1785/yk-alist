@@ -151,9 +151,10 @@ func (t *DownloadTask) Complete() error {
 		file := files[i]
 		TransferTaskManager.Add(&TransferTask{
 			file:         file,
-			dstDirPath:   t.DstDirPath,
-			tempDir:      t.TempDir,
-			deletePolicy: t.DeletePolicy,
+			DstDirPath:   t.DstDirPath,
+			TempDir:      t.TempDir,
+			DeletePolicy: t.DeletePolicy,
+			FileDir:      file.Path,
 		})
 	}
 	return nil
