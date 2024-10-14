@@ -47,9 +47,10 @@ type LogConfig struct {
 }
 
 type TaskConfig struct {
-	Workers     int    `json:"workers" env:"WORKERS"`
-	MaxRetry    int    `json:"max_retry" env:"MAX_RETRY"`
-	PersistPath string `json:"persist_path" env:"PERSISTPATH"`
+	Workers        int    `json:"workers" env:"WORKERS"`
+	MaxRetry       int    `json:"max_retry" env:"MAX_RETRY"`
+	PersistPath    string `json:"persist_path" env:"PERSISTPATH"`
+	TaskPersistant bool   `json:"task_persistant" env:"TASK_PERSISTANT"`
 }
 
 type TasksConfig struct {

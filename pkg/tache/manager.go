@@ -11,7 +11,6 @@ import (
 
 	"github.com/jaevor/go-nanoid"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/xhofe/gsync"
 )
 
@@ -45,7 +44,7 @@ func NewManager[T Task](opts ...Option) *Manager[T] {
 		logger:      options.Logger,
 	}
 	m.running.Store(options.Running)
-	if m.opts.PersistPath != "" {
+	if m.opts.PersistPath != "" || (m.opts.PersistReadFunction != nil && m.opts.PersistWriteFunction != nil) {
 		m.debouncePersist = func() {
 			_ = m.persist()
 		}
@@ -149,7 +148,7 @@ func (m *Manager[T]) Wait() {
 
 // persist all tasks
 func (m *Manager[T]) persist() error {
-	if m.opts.PersistPath == "" {
+	if m.opts.PersistPath == "" && m.opts.PersistReadFunction == nil && m.opts.PersistWriteFunction == nil {
 		return nil
 	}
 	// serialize tasks
@@ -165,21 +164,34 @@ func (m *Manager[T]) persist() error {
 	if err != nil {
 		return err
 	}
-	// write to file
-	err = os.WriteFile(m.opts.PersistPath, marshal, 0644)
-	if err != nil {
-		return err
+	if m.opts.PersistReadFunction != nil && m.opts.PersistWriteFunction != nil {
+		err = m.opts.PersistWriteFunction(marshal)
+		if err != nil {
+			return err
+		}
+	}
+	if m.opts.PersistPath != "" {
+		// write to file
+		err = os.WriteFile(m.opts.PersistPath, marshal, 0644)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 // recover all tasks
 func (m *Manager[T]) recover() error {
-	if m.opts.PersistPath == "" {
+	var data []byte
+	var err error
+	if m.opts.PersistPath != "" {
+		// read from file
+		data, err = os.ReadFile(m.opts.PersistPath)
+	} else if m.opts.PersistReadFunction != nil && m.opts.PersistWriteFunction != nil {
+		data, err = m.opts.PersistReadFunction()
+	} else {
 		return nil
 	}
-	// read from file
-	data, err := os.ReadFile(m.opts.PersistPath)
 	if err != nil {
 		return err
 	}
@@ -191,18 +203,6 @@ func (m *Manager[T]) recover() error {
 	}
 	// add tasks
 	for _, task := range tasks {
-		_, task_exits := m.GetByID(task.GetID())
-		if !task_exits {
-			log.Errorln("任务不存在，可能是服务重启造成的,尝试通过API新建:仅支持复制任务,稍后添加")
-			marshal, _ := json.Marshal(task)
-			var task_map map[string]interface{}
-			err := json.Unmarshal([]byte(marshal), &task_map)
-			if err != nil {
-				log.Errorln("未能成功解析存储的任务信息，请删除人工添加")
-				continue
-			}
-			log.Debugln(task_map)
-		}
 		// only recover task which is not recoverable or recoverable and need recover
 		if r, ok := Task(task).(Recoverable); !ok || r.Recoverable() {
 			m.Add(task)

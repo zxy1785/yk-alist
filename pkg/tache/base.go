@@ -1,18 +1,15 @@
 package tache
 
-import (
-	"context"
-	"errors"
-)
+import "context"
 
 // Base is the base struct for all tasks to implement TaskBase interface
 type Base struct {
-	ID       string  `json:"id"`
-	State    State   `json:"state"`
-	Retry    int     `json:"retry"`
-	MaxRetry int     `json:"max_retry"`
-	Error    string  `json:"error"`
-	Progress float64 `json:"progress"`
+	ID       string `json:"id"`
+	State    State  `json:"state"`
+	Retry    int    `json:"retry"`
+	MaxRetry int    `json:"max_retry"`
+
+	progress float64
 	err      error
 	ctx      context.Context
 	cancel   context.CancelFunc
@@ -20,12 +17,12 @@ type Base struct {
 }
 
 func (b *Base) SetProgress(progress float64) {
-	b.Progress = progress
+	b.progress = progress
 	b.Persist()
 }
 
 func (b *Base) GetProgress() float64 {
-	return b.Progress
+	return b.progress
 }
 
 func (b *Base) SetState(state State) {
@@ -47,17 +44,12 @@ func (b *Base) SetID(id string) {
 }
 
 func (b *Base) SetErr(err error) {
-	if err == nil {
-		return
-	}
 	b.err = err
-	b.Error = err.Error()
 	b.Persist()
 }
 
 func (b *Base) GetErr() error {
-	return errors.New(b.Error)
-	//return b.err
+	return b.err
 }
 
 func (b *Base) CtxDone() <-chan struct{} {
@@ -98,17 +90,5 @@ func (b *Base) Persist() {
 func (b *Base) SetPersist(persist func()) {
 	b.persist = persist
 }
-
-// func (b *Base) OnFailed() {
-
-// }
-
-// func (b *Base) OnSucceeded() {
-
-// }
-
-// func (b *Base) OnBeforeRetry() {
-
-// }
 
 var _ TaskBase = (*Base)(nil)
