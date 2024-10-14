@@ -7,6 +7,11 @@ name: release_linux_musl_arm
 on:
   repository_dispatch:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release'
+        required: true
+        default: 'latest'
 
 jobs:
   release_linux_musl_arm:
@@ -32,7 +37,11 @@ jobs:
         run: |
           bash build.sh release linux_musl_arm
 
-      - name: Upload assets
-        uses: softprops/action-gh-release@v1
+      - name: Upload binary to GitHub Release
+        uses: svenstaro/upload-release-action@v2
         with:
-          files: build/compress/*
+          repo_token: ${{ secrets.MY_TOKEN }}
+          file: build/compress/*
+          file_glob: true
+          overwrite: true
+          tag: "refs/tags/${{ github.event.inputs.tag }}"
