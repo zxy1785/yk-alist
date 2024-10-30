@@ -338,14 +338,17 @@ func (e SendNotifyPlatform) WeWorkBot(body string, title string, content string)
 // 注意映射方法名必需大写要不然找不到
 func (e SendNotifyPlatform) Webhook(body string, title string, content string) (bool, error) {
 	var webhook model.Webhook
+	fmt.Println("#####################")
 	err := json.Unmarshal([]byte(body), &webhook)
+	webhookBodyString := string(webhook.WebhookBody)
+	fmt.Println(webhookBodyString)
 
 	if err != nil {
 		log.Errorln("无法解析配置文件")
 		return false, errors.New("无法解析配置文件")
 	}
 
-	if !strings.Contains(webhook.WebhookUrl, "$title") && !strings.Contains(webhook.WebhookBody, "$title") {
+	if !strings.Contains(webhook.WebhookUrl, "$title") && !strings.Contains(webhookBodyString, "$title") {
 		return false, errors.New("URL 或者 Body 中必须包含 $title")
 	}
 
@@ -372,26 +375,34 @@ func (e SendNotifyPlatform) Webhook(body string, title string, content string) (
 		}
 	}
 
-	targetBody := strings.ReplaceAll(strings.ReplaceAll(webhook.WebhookBody, "$title", title), "$content", content)
+	targetBody := strings.ReplaceAll(strings.ReplaceAll(webhookBodyString, "$title", title), "$content", content)
 	formattedBody := make(map[string]interface{})
 	switch webhook.WebhookContentType {
 	case "application/json":
+		//targetBody, _ := json.Marshal(targetBody)
+		fmt.Println(targetBody)
 		formattedBody["json"] = targetBody
 	case "multipart/form-data":
 		formattedBody["form"] = targetBody
 	case "application/x-www-form-urlencoded", "text/plain":
 		formattedBody["body"] = targetBody
 	}
-	bodyParams, err := json.Marshal(formattedBody)
-	if err != nil {
-		log.Errorln("WebhookBody解析失败")
-		return false, errors.New("WebhookBody解析失败")
-	}
+	//bodyParams, err := json.Marshal(formattedBody)
+	// if err != nil {
+	// 	log.Errorln("WebhookBody解析失败")
+	// 	return false, errors.New("WebhookBody解析失败")
+	// }
 
 	formatURL := strings.ReplaceAll(strings.ReplaceAll(webhook.WebhookUrl, "$title", url.QueryEscape(title)), "$content", url.QueryEscape(content))
 	client := &http.Client{}
 
-	req, err := http.NewRequest(webhook.WebhookMethod, formatURL, strings.NewReader(string(bodyParams)))
+	//requestBody := strings.NewReader(string(bodyParams))
+	requestBody := string(targetBody)
+
+	fmt.Println(headers)
+	fmt.Println(requestBody)
+
+	req, err := http.NewRequest(webhook.WebhookMethod, formatURL, bytes.NewBuffer([]byte(requestBody)))
 	if err != nil {
 		log.Errorln("Webhook创建请求失败")
 		return false, err
@@ -425,6 +436,7 @@ func Notify(title string, content string) {
 	platform, err := GetSettingItemByKey(conf.NotifyPlatform)
 	enable, err := GetSettingItemByKey(conf.NotifyEnabled)
 	notifyBody, err := GetSettingItemByKey(conf.NotifyValue)
+
 	if err != nil {
 		log.Error("无法找到配置信息")
 	}
@@ -453,6 +465,9 @@ func Notify(title string, content string) {
 	}
 
 	method := v.MethodByName(methodName)
+
+	fmt.Println(method)
+
 	// 检查方法是否存在
 	if !method.IsValid() {
 		log.Debug("Method %s not found\n", methodName)
