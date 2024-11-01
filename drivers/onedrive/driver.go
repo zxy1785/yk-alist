@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 	"sync"
 
 	"github.com/alist-org/alist/v3/drivers/base"
@@ -106,6 +107,17 @@ func (d *Onedrive) Link(ctx context.Context, file model.Obj, args model.LinkArgs
 		_u.Host = d.CustomHost
 		u = _u.String()
 	}
+
+	if d.ProxyUrl != "" {
+
+		if strings.HasSuffix(d.ProxyUrl, "/") {
+			u = d.ProxyUrl + f.Url
+		} else {
+			u = d.ProxyUrl + "/" + f.Url
+		}
+
+	}
+
 	return &model.Link{
 		URL: u,
 	}, nil

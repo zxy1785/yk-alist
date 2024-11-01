@@ -16,6 +16,7 @@ type Addition struct {
 	SiteId       string `json:"site_id"`
 	ChunkSize    int64  `json:"chunk_size" type:"number" default:"5"`
 	CustomHost   string `json:"custom_host" help:"Custom host for onedrive download link"`
+	ProxyUrl     string `json:"proxy_url" help:"ProxyUrl for onedrive download link like pikpak"`
 }
 
 var config = driver.Config{
