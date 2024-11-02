@@ -376,7 +376,7 @@ func getPartSize(size int64) int64 {
 	if size/GB > 30 {
 		return 512 * MB
 	}
-	return 100 * MB
+	return 350 * MB
 }
 
 func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStreamer, up driver.UpdateProgress) error {
@@ -470,10 +470,10 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 			}
 			req = req.WithContext(ctx)
 			req.Header.Set("Content-Type", "application/octet-stream")
-			req.Header.Set("Content-Length", fmt.Sprint(stream.GetSize()))
+			req.Header.Set("Content-Length", fmt.Sprint(byteSize))
 			req.Header.Set("Origin", "https://yun.139.com")
 			req.Header.Set("Referer", "https://yun.139.com/")
-			req.ContentLength = stream.GetSize()
+			req.ContentLength = byteSize
 
 			res, err := base.HttpClient.Do(req)
 			if err != nil {
