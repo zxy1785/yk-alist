@@ -416,7 +416,7 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 				PartNumber: partNumber,
 				PartSize:   byteSize,
 				ParallelHashCtx: ParallelHashCtx{
-					PartOffset: start + byteSize - 1,
+					PartOffset: start,
 				},
 			}
 			partInfos = append(partInfos, partInfo)
