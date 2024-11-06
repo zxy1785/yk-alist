@@ -62,7 +62,7 @@ func (t *CopyTask) Run() error {
 		return errors.WithMessage(err, "failed get storage")
 	}
 
-        srcObj, err := get(context.Background(), t.SrcObjPath)
+        srcObj, err := get(context.Background(), t.SrcStorageMp+t.SrcObjPath)
         if err != nil {
 		return errors.WithMessagef(err, "failed get src [%s] file", SrcObjPath)
 	}
