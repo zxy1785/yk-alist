@@ -70,8 +70,8 @@ func Move(ctx context.Context, srcPath, dstDirPath string, lazyCache ...bool) er
 	return err
 }
 
-func Copy(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool) (tache.TaskWithInfo, error) {
-	res, err := _copy(ctx, srcObjPath, dstDirPath, lazyCache...)
+func Copy(ctx context.Context, srcObjPath, dstDirPath string, overwrite bool, lazyCache ...bool) (tache.TaskWithInfo, error) {
+	res, err := _copy(ctx, srcObjPath, dstDirPath, overwrite, lazyCache...)
 	if err != nil {
 		log.Errorf("failed copy %s to %s: %+v", srcObjPath, dstDirPath, err)
 	}

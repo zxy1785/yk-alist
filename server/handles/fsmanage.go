@@ -57,9 +57,10 @@ func FsMkdir(c *gin.Context) {
 }
 
 type MoveCopyReq struct {
-	SrcDir string   `json:"src_dir"`
-	DstDir string   `json:"dst_dir"`
-	Names  []string `json:"names"`
+	SrcDir   string   `json:"src_dir"`
+	DstDir   string   `json:"dst_dir"`
+	Override bool     `json:"override"`
+	Names    []string `json:"names"`
 }
 
 func FsMove(c *gin.Context) {
@@ -124,7 +125,7 @@ func FsCopy(c *gin.Context) {
 	}
 	var addedTasks []tache.TaskWithInfo
 	for i, name := range req.Names {
-		t, err := fs.Copy(c, stdpath.Join(srcDir, name), dstDir, len(req.Names) > i+1)
+		t, err := fs.Copy(c, stdpath.Join(srcDir, name), dstDir, req.Override, len(req.Names) > i+1)
 		if t != nil {
 			addedTasks = append(addedTasks, t)
 		}

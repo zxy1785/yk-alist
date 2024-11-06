@@ -22,6 +22,7 @@ type CopyTask struct {
 	Status       string        `json:"-"` //don't save status to save space
 	SrcObjPath   string        `json:"src_path"`
 	DstDirPath   string        `json:"dst_path"`
+	Override     bool          `json:"override"`
 	srcStorage   driver.Driver `json:"-"`
 	dstStorage   driver.Driver `json:"-"`
 	SrcStorageMp string        `json:"src_storage_mp"`
@@ -60,7 +61,21 @@ func (t *CopyTask) Run() error {
 	if err != nil {
 		return errors.WithMessage(err, "failed get storage")
 	}
-	return copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
+
+	if !t.Override {
+		_, name := stdpath.Split(t.SrcObjPath)
+		dst_path := stdpath.Join(t.DstStorageMp+t.DstDirPath, name)
+		obj, err := get(context.Background(), dst_path)
+		if err != nil {
+			//文件不存在
+			return copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
+		} else {
+			//文件已经存在，直接返回完成
+			return errors.WithMessage(err, obj.GetName()+"文件已经存在")
+		}
+	} else {
+		return copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
+	}
 
 }
 
@@ -68,7 +83,7 @@ var CopyTaskManager *tache.Manager[*CopyTask]
 
 // Copy if in the same storage, call move method
 // if not, add copy task
-func _copy(ctx context.Context, SrcObjPath, DstDirPath string, lazyCache ...bool) (tache.TaskWithInfo, error) {
+func _copy(ctx context.Context, SrcObjPath, DstDirPath string, overwrite bool, lazyCache ...bool) (tache.TaskWithInfo, error) {
 	srcStorage, srcObjActualPath, err := op.GetStorageAndActualPath(SrcObjPath)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed get src storage")
@@ -77,6 +92,7 @@ func _copy(ctx context.Context, SrcObjPath, DstDirPath string, lazyCache ...bool
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed get dst storage")
 	}
+
 	// copy if in the same storage, just call driver.Copy
 	if srcStorage.GetStorage() == dstStorage.GetStorage() {
 		return nil, op.Copy(ctx, srcStorage, srcObjActualPath, dstDirActualPath, lazyCache...)
@@ -107,11 +123,13 @@ func _copy(ctx context.Context, SrcObjPath, DstDirPath string, lazyCache ...bool
 		}
 	}
 	// not in the same storage
+
 	t := &CopyTask{
 		srcStorage:   srcStorage,
 		dstStorage:   dstStorage,
 		SrcObjPath:   srcObjActualPath,
 		DstDirPath:   dstDirActualPath,
+		Override:     overwrite,
 		SrcStorageMp: srcStorage.GetStorage().MountPath,
 		DstStorageMp: dstStorage.GetStorage().MountPath,
 	}
@@ -142,6 +160,7 @@ func copyBetween2Storages(t *CopyTask, srcStorage, dstStorage driver.Driver, Src
 				dstStorage:   dstStorage,
 				SrcObjPath:   SrcObjPath,
 				DstDirPath:   dstObjPath,
+				Override:     t.Override,
 				SrcStorageMp: srcStorage.GetStorage().MountPath,
 				DstStorageMp: dstStorage.GetStorage().MountPath,
 			})
