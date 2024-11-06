@@ -62,6 +62,14 @@ func (t *CopyTask) Run() error {
 		return errors.WithMessage(err, "failed get storage")
 	}
 
+        srcObj, err := get(context.Background(), t.SrcObjPath)
+        if err != nil {
+		return errors.WithMessagef(err, "failed get src [%s] file", SrcObjPath)
+	}
+	if srcObj.IsDir() {
+		return copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
+	}
+	
 	if !t.Override {
 		_, name := stdpath.Split(t.SrcObjPath)
 		dst_path := stdpath.Join(t.DstStorageMp+t.DstDirPath, name)
