@@ -65,6 +65,14 @@ jobs:
           overwrite: true
           tag: "refs/tags/${{ github.event.inputs.tag }}"
 
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ secrets.MY_TOKEN }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 0
+
   # release_desktop:
   #   needs: release
   #   name: Release desktop
