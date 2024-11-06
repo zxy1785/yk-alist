@@ -70,7 +70,7 @@ func (t *CopyTask) Run() error {
 	        if srcObj.IsDir() {
 		        return copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
 	        }
-		dst_path := stdpath.Join(t.DstStorageMp+t.DstDirPath, srcObj.name)
+		dst_path := stdpath.Join(t.DstStorageMp+t.DstDirPath, srcObj.GetName())
 		obj, err := get(context.Background(), dst_path)
 		if err != nil {
 			//文件不存在
