@@ -139,6 +139,59 @@ func FsCopy(c *gin.Context) {
 	})
 }
 
+// 相比于FsCopy FsCopyItem可以给每个文件指定dstDir更灵活点
+// SrcFile文件路径 文件的绝对路径
+// DstDir 要复制到的目录的绝对路径
+type CopyItem struct {
+	SrcFile string `json:"src_file"`
+	DstDir  string `json:"dst_dir"`
+}
+type CopyItemReq struct {
+	Override bool       `json:"override"`
+	Names    []CopyItem `json:"names"`
+}
+
+func FsCopyItem(c *gin.Context) {
+	var req CopyItemReq
+	if err := c.ShouldBind(&req); err != nil {
+		common.ErrorResp(c, err, 400)
+		return
+	}
+	if len(req.Names) == 0 {
+		common.ErrorStrResp(c, "Empty file names", 400)
+		return
+	}
+	user := c.MustGet("user").(*model.User)
+	if !user.CanCopy() {
+		common.ErrorResp(c, errs.PermissionDenied, 403)
+		return
+	}
+	// srcDir, err := user.JoinPath(req.SrcDir)
+	// if err != nil {
+	// 	common.ErrorResp(c, err, 403)
+	// 	return
+	// }
+	// dstDir, err := user.JoinPath(req.DstDir)
+	// if err != nil {
+	// 	common.ErrorResp(c, err, 403)
+	// 	return
+	// }
+	var addedTasks []tache.TaskWithInfo
+	for i, name := range req.Names {
+		t, err := fs.Copy(c, name.SrcFile, name.DstDir, req.Override, len(req.Names) > i+1)
+		if t != nil {
+			addedTasks = append(addedTasks, t)
+		}
+		if err != nil {
+			common.ErrorResp(c, err, 500)
+			return
+		}
+	}
+	common.SuccessResp(c, gin.H{
+		"tasks": getTaskInfos(addedTasks),
+	})
+}
+
 type RenameReq struct {
 	Path string `json:"path"`
 	Name string `json:"name"`

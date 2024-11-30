@@ -3,6 +3,7 @@ package server
 import (
 	"math/rand"
 	"time"
+
 	"github.com/alist-org/alist/v3/cmd/flags"
 	"github.com/alist-org/alist/v3/internal/conf"
 	"github.com/alist-org/alist/v3/internal/message"
@@ -177,6 +178,7 @@ func _fs(g *gin.RouterGroup) {
 	g.POST("/move", handles.FsMove)
 	g.POST("/recursive_move", handles.FsRecursiveMove)
 	g.POST("/copy", handles.FsCopy)
+	g.POST("/copy_item", handles.FsCopyItem)
 	g.POST("/remove", handles.FsRemove)
 	g.POST("/remove_empty_directory", handles.FsRemoveEmptyDirectory)
 	g.PUT("/put", middlewares.FsUp, handles.FsStream)
