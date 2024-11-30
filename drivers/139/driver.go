@@ -310,7 +310,7 @@ func (d *Yun139) Remove(ctx context.Context, obj model.Obj) error {
 	case MetaPersonal:
 		fallthrough
 	case MetaFamily:
-
+                return errs.NotImplement
 		log.Warn("==========================================")
 		var contentInfoList []string
 		var catalogInfoList []string
