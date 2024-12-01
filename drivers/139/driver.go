@@ -315,9 +315,11 @@ func (d *Yun139) Remove(ctx context.Context, obj model.Obj) error {
 		var contentInfoList []string
 		var catalogInfoList []string
 		cataID := obj.GetID()
+		path := ""
 		if strings.Contains(cataID, "/") {
 			lastSlashIndex := strings.LastIndex(cataID, "/")
 			cataID = cataID[lastSlashIndex+1:]
+			path = cataID[0:lastSlashIndex]
 		}
 
 		if obj.IsDir() {
@@ -346,7 +348,7 @@ func (d *Yun139) Remove(ctx context.Context, obj model.Obj) error {
 				"taskType":          2,
 				"sourceCloudID":     d.CloudID,
 				"sourceCatalogType": 1002,
-				"path":              "",
+				"path":              path,
 				"contentList":       catalogInfoList,
 				"catalogList":       contentInfoList,
 				"commonAccountInfo": base.Json{
