@@ -318,8 +318,8 @@ func (d *Yun139) Remove(ctx context.Context, obj model.Obj) error {
 		path := ""
 		if strings.Contains(cataID, "/") {
 			lastSlashIndex := strings.LastIndex(cataID, "/")
-			cataID = cataID[lastSlashIndex+1:]
 			path = cataID[0:lastSlashIndex]
+			cataID = cataID[lastSlashIndex+1:]
 		}
 
 		if obj.IsDir() {
