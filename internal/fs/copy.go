@@ -10,6 +10,7 @@ import (
 	"github.com/alist-org/alist/v3/internal/driver"
 	"github.com/alist-org/alist/v3/internal/model"
 	"github.com/alist-org/alist/v3/internal/op"
+	"github.com/alist-org/alist/v3/internal/setting"
 	"github.com/alist-org/alist/v3/internal/stream"
 	"github.com/alist-org/alist/v3/pkg/tache"
 	"github.com/alist-org/alist/v3/pkg/utils"
@@ -40,13 +41,17 @@ func (t *CopyTask) GetStatus() string {
 func (t *CopyTask) OnFailed() {
 	result := fmt.Sprintf("%s:%s", t.GetName(), t.GetErr())
 	log.Debug(result)
-	go op.Notify("文件复制结果", result)
+	if setting.GetBool(conf.NotifyEnabled) && setting.GetBool(conf.NotifyOnCopyFailed) {
+		go op.Notify("文件复制结果", result)
+	}
 }
 
 func (t *CopyTask) OnSucceeded() {
 	result := fmt.Sprintf("复制%s到%s成功", t.SrcObjPath, t.DstDirPath)
 	log.Debug(result)
-	go op.Notify("文件复制结果", result)
+	if setting.GetBool(conf.NotifyEnabled) && setting.GetBool(conf.NotifyOnCopySucceeded) {
+		go op.Notify("文件复制结果", result)
+	}
 }
 
 func (t *CopyTask) Run() error {
@@ -61,15 +66,15 @@ func (t *CopyTask) Run() error {
 	if err != nil {
 		return errors.WithMessage(err, "failed get storage")
 	}
-	
+
 	if !t.Override {
 		srcObj, err := get(context.Background(), t.SrcStorageMp+t.SrcObjPath)
-                if err != nil {
-		        return errors.WithMessagef(err, "failed get src [%s] file", t.SrcObjPath)
-	        }
-	        if srcObj.IsDir() {
-		        return copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
-	        }
+		if err != nil {
+			return errors.WithMessagef(err, "failed get src [%s] file", t.SrcObjPath)
+		}
+		if srcObj.IsDir() {
+			return copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
+		}
 		dst_path := stdpath.Join(t.DstStorageMp+t.DstDirPath, srcObj.GetName())
 		obj, err := get(context.Background(), dst_path)
 		if err != nil {

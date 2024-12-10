@@ -172,6 +172,10 @@ func InitialSettings() []model.SettingItem {
 		{Key: conf.NotifyEnabled, Value: "false", Type: conf.TypeBool, Group: model.NOTIFICATION, Flag: model.PUBLIC},
 		{Key: conf.NotifyPlatform, Type: conf.TypeSelect, Options: "gotify,goCqHttpBot,serverChan,pushDeer,bark,telegramBot,dingtalkBot,weWorkBot,weWorkApp,aibotk,iGot,pushPlus,chat,email,lark,pushMe,chronocat,webhook,closed", Group: model.NOTIFICATION, Flag: model.PUBLIC},
 		{Key: conf.NotifyValue, Type: conf.TypeText, Group: model.NOTIFICATION, Flag: model.PUBLIC},
+		{Key: conf.NotifyOnCopySucceeded, Value: "true", Type: conf.TypeBool, Group: model.NOTIFICATION, Flag: model.PUBLIC},
+		{Key: conf.NotifyOnCopyFailed, Value: "true", Type: conf.TypeBool, Group: model.NOTIFICATION, Flag: model.PUBLIC},
+		{Key: conf.NotifyOnDownloadSucceeded, Value: "true", Type: conf.TypeBool, Group: model.NOTIFICATION, Flag: model.PUBLIC},
+		{Key: conf.NotifyOnDownloadFailed, Value: "true", Type: conf.TypeBool, Group: model.NOTIFICATION, Flag: model.PUBLIC},
 
 		// ldap settings
 		{Key: conf.LdapLoginEnabled, Value: "false", Type: conf.TypeBool, Group: model.LDAP, Flag: model.PUBLIC},

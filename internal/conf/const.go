@@ -74,9 +74,13 @@ const (
 	SSOCompatibilityMode = "sso_compatibility_mode"
 
 	//NOTYFY
-	NotifyEnabled  = "notify_enabled"
-	NotifyPlatform = "notify_platform"
-	NotifyValue    = "notify_value"
+	NotifyEnabled             = "notify_enabled"
+	NotifyPlatform            = "notify_platform"
+	NotifyValue               = "notify_value"
+	NotifyOnCopySucceeded     = "notify_on_copy_succeeded"
+	NotifyOnCopyFailed        = "notify_on_copy_failed"
+	NotifyOnDownloadSucceeded = "notify_on_download_succeeded"
+	NotifyOnDownloadFailed    = "notify_on_download_failed"
 
 	//ldap
 	LdapLoginEnabled      = "ldap_login_enabled"

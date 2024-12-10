@@ -31,13 +31,18 @@ type DownloadTask struct {
 func (t *DownloadTask) OnFailed() {
 	result := fmt.Sprintf("%s下载失败:%s", t.Url, t.GetErr())
 	log.Debug(result)
-	go op.Notify("文件下载结果", result)
+	if setting.GetBool(conf.NotifyEnabled) && setting.GetBool(conf.NotifyOnDownloadFailed) {
+		go op.Notify("文件下载结果", result)
+	}
+
 }
 
 func (t *DownloadTask) OnSucceeded() {
 	result := fmt.Sprintf("%s下载成功", t.Url)
 	log.Debug(result)
-	go op.Notify("文件下载结果", result)
+	if setting.GetBool(conf.NotifyEnabled) && setting.GetBool(conf.NotifyOnDownloadSucceeded) {
+		go op.Notify("文件下载结果", result)
+	}
 }
 
 func (t *DownloadTask) Run() error {
