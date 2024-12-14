@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -371,27 +372,49 @@ func (e SendNotifyPlatform) Webhook(body string, title string, content string) (
 			headers[key] = value
 		}
 	}
-
 	targetBody := strings.ReplaceAll(strings.ReplaceAll(webhookBodyString, "$title", title), "$content", content)
-	formattedBody := make(map[string]interface{})
+	rbodys := make(map[string]string)
+	if len(webhook.WebhookHeaders) > 2 {
+		// 按换行符分割字符串
+		headerLines := strings.Split(targetBody, "\n")
+		// 遍历每一行
+		for _, line := range headerLines {
+			// 忽略空行
+			if line == "" {
+				continue
+			}
+			// 按冒号分割键值对
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) != 2 {
+				return false, fmt.Errorf("malformed header: %s", line)
+			}
+			// 去除键和值两端的空白字符
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			// 将键值对添加到 map 中
+			rbodys[key] = value
+		}
+	}
+
+	var fbody *bytes.Buffer
 	switch webhook.WebhookContentType {
 	case "application/json":
-		formattedBody["json"] = targetBody
+		fbody, err = formatJSON(rbodys)
 	case "multipart/form-data":
-		formattedBody["form"] = targetBody
+		fbody, err = formatMultipart(rbodys)
 	case "application/x-www-form-urlencoded", "text/plain":
-		formattedBody["body"] = targetBody
+		fbody, err = formatURLForm(rbodys)
+	default:
+		fmt.Println("Unsupported content type")
+		return false, nil
 	}
-	//bodyParams, err := json.Marshal(formattedBody)
 	// if err != nil {
 	// 	log.Errorln("WebhookBody解析失败")
 	// 	return false, errors.New("WebhookBody解析失败")
 	// }
 	formatURL := strings.ReplaceAll(strings.ReplaceAll(webhook.WebhookUrl, "$title", url.QueryEscape(title)), "$content", url.QueryEscape(content))
 	client := &http.Client{}
-	//requestBody := strings.NewReader(string(bodyParams))
-	requestBody := string(targetBody)
-	req, err := http.NewRequest(webhook.WebhookMethod, formatURL, bytes.NewBuffer([]byte(requestBody)))
+	req, err := http.NewRequest(webhook.WebhookMethod, formatURL, fbody)
 	if err != nil {
 		log.Errorln("Webhook创建请求失败")
 		return false, err
@@ -463,4 +486,41 @@ func Notify(title string, content string) {
 	// 调用方法
 
 	method.Call(args)
+}
+
+// formatJSON 格式化为 JSON
+func formatJSON(bodys map[string]string) (*bytes.Buffer, error) {
+	jsonData, err := json.Marshal(bodys)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.NewBuffer(jsonData), nil
+}
+
+// formatMultipart 格式化为 multipart/form-data
+func formatMultipart(bodys map[string]string) (*bytes.Buffer, error) {
+	var b bytes.Buffer
+	writer := multipart.NewWriter(&b)
+	for key, value := range bodys {
+		err := writer.WriteField(key, value)
+		if err != nil {
+			return nil, err
+		}
+	}
+	err := writer.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return &b, nil
+}
+
+// formatURLForm 格式化为 application/x-www-form-urlencoded
+func formatURLForm(bodys map[string]string) (*bytes.Buffer, error) {
+	values := url.Values{}
+	for key, value := range bodys {
+		values.Add(key, value)
+	}
+	formData := values.Encode()
+	return bytes.NewBufferString(formData), nil
 }

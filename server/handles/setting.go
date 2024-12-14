@@ -7,6 +7,7 @@ import (
 	"github.com/alist-org/alist/v3/internal/conf"
 	"github.com/alist-org/alist/v3/internal/model"
 	"github.com/alist-org/alist/v3/internal/op"
+	"github.com/alist-org/alist/v3/internal/setting"
 	"github.com/alist-org/alist/v3/internal/sign"
 	"github.com/alist-org/alist/v3/pkg/utils/random"
 	"github.com/alist-org/alist/v3/server/common"
@@ -54,6 +55,12 @@ func SaveSettings(c *gin.Context) {
 	if err := op.SaveSettingItems(req); err != nil {
 		common.ErrorResp(c, err, 500)
 	} else {
+		if req[0].Group == 10 {
+			title := setting.GetStr(conf.SiteTitle)
+			if setting.GetBool(conf.NotifyEnabled) {
+				go op.Notify(title+"测试通知", "欢迎使用!!!!")
+			}
+		}
 		common.SuccessResp(c)
 		static.UpdateIndex()
 	}
