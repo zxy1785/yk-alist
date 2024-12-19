@@ -8,10 +8,6 @@
 # requirements:
 #     disk: 30
 # form:
-#     port:
-#         label:
-#             en: Port
-#         max_length: 255
 #     password:
 #         type: password
 #         label:
@@ -24,4 +20,4 @@ cd $INSTALL_PATH
 wget -O- --no-hsts https://github.com/ykxVK8yL5L/alist/releases/download/latest/alist-linux-amd64.tar.gz | tar -xz --strip-components=0
 
 ./alist admin set $FORM_PASSWORD
-sed -i 's/5244/$FORM_PORT/g' data/config.json
+sed -i "s/5244/$PORT/g" data/config.json
