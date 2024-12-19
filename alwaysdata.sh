@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Declare site in YAML, as documented on the documentation: https://help.alwaysdata.com/en/marketplace/build-application-script/
+# site:
+#     type: user_program
+#     working_directory: '{INSTALL_PATH_RELATIVE}'
+#     command: './alist server'
+# requirements:
+#     disk: 30
+# form:
+#     port:
+#         label:
+#             en: Port
+#         max_length: 255
+#     password:
+#         type: password
+#         label:
+#             en: Password
+#             fr: Mot de passe
+#         max_length: 255
+
+set -e
+
+wget -O- --no-hsts https://github.com/ykxVK8yL5L/alist/releases/download/latest/alist-linux-amd64.tar.gz | tar -xz --strip-components=0
+
+./alist admin set $FORM_PASSWORD
+sed -i 's/5244/$FORM_PORT/g' data/config.json
