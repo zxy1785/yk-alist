@@ -20,7 +20,7 @@
 #         max_length: 255
 
 set -e
-
+cd $INSTALL_PATH
 wget -O- --no-hsts https://github.com/ykxVK8yL5L/alist/releases/download/latest/alist-linux-amd64.tar.gz | tar -xz --strip-components=0
 
 ./alist admin set $FORM_PASSWORD
