@@ -67,7 +67,9 @@ func (d *ChaoXing) Init(ctx context.Context) error {
 }
 
 func (d *ChaoXing) Drop(ctx context.Context) error {
-	d.cron.Stop()
+	if d.cron != nil {
+		d.cron.Stop()
+	}
 	return nil
 }
 
@@ -229,7 +231,7 @@ func (d *ChaoXing) Put(ctx context.Context, dstDir model.Obj, stream model.FileS
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(filePart, stream)
+	_, err = utils.CopyWithBuffer(filePart, stream)
 	if err != nil {
 		return err
 	}
