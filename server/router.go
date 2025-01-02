@@ -130,6 +130,7 @@ func admin(g *gin.RouterGroup) {
 	storage.GET("/list", handles.ListStorages)
 	storage.GET("/get", handles.GetStorage)
 	storage.POST("/create", handles.CreateStorage)
+	storage.POST("/copy", handles.CopyStorage)
 	storage.POST("/update", handles.UpdateStorage)
 	storage.POST("/delete", handles.DeleteStorage)
 	storage.POST("/enable", handles.EnableStorage)

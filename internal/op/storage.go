@@ -2,6 +2,7 @@ package op
 
 import (
 	"context"
+	"encoding/json"
 	"sort"
 	"strings"
 	"time"
@@ -64,6 +65,58 @@ func CreateStorage(ctx context.Context, storage model.Storage) (uint, error) {
 	}
 	log.Debugf("storage %+v is created", storageDriver)
 	return storage.ID, nil
+}
+
+// 根据ID复制存储
+func CopyStorageById(ctx context.Context, id uint) (uint, error) {
+	storage, err := db.GetStorageById(id)
+	if err != nil {
+		return 0, errors.WithMessage(err, "copied get storage")
+	}
+	// 将 Storage 转换为 JSON
+	jsonData, _ := json.Marshal(storage)
+	storage_json := string(jsonData)
+	var data map[string]interface{}
+	err = json.Unmarshal([]byte(storage_json), &data)
+	if err != nil {
+		return 0, errors.WithMessage(err, "解析存储失败")
+	}
+	// Step 2: 移除ID字段
+	delete(data, "id")
+	// Step 3: 将修改后的数据结构编码为 JSON 字符串
+	result, err := json.Marshal(data)
+	if err != nil {
+		return 0, errors.WithMessage(err, "解析存储失败")
+	}
+	var new_storage model.Storage
+	err = json.Unmarshal([]byte(result), &new_storage)
+	if err != nil {
+		return 0, errors.WithMessage(err, "解析新存储失败")
+	}
+
+	// check driver first
+	new_storage.MountPath = storage.MountPath + "_copyed2"
+	new_storage.Modified = time.Now()
+	new_storage.MountPath = utils.FixAndCleanPath(new_storage.MountPath)
+	driverName := new_storage.Driver
+	driverNew, err := GetDriver(driverName)
+	if err != nil {
+		return 0, errors.WithMessage(err, "failed get driver new")
+	}
+	storageDriver := driverNew()
+	// insert storage to database
+	err = db.CreateStorage(&new_storage)
+	if err != nil {
+		return new_storage.ID, errors.WithMessage(err, "failed create storage in database")
+	}
+	// already has an id
+	err = initStorage(ctx, new_storage, storageDriver)
+	go callStorageHooks("add", storageDriver)
+	if err != nil {
+		return new_storage.ID, errors.Wrap(err, "failed init storage but storage is already created")
+	}
+	log.Debugf("storage %+v is created", storageDriver)
+	return new_storage.ID, nil
 }
 
 // LoadStorage load exist storage in db to memory

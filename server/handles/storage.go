@@ -49,6 +49,20 @@ func CreateStorage(c *gin.Context) {
 	}
 }
 
+func CopyStorage(c *gin.Context) {
+	idStr := c.Query("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		common.ErrorResp(c, err, 400)
+		return
+	}
+	if _, err := op.CopyStorageById(c, uint(id)); err != nil {
+		common.ErrorResp(c, err, 500, true)
+		return
+	}
+	common.SuccessResp(c)
+}
+
 func UpdateStorage(c *gin.Context) {
 	var req model.Storage
 	if err := c.ShouldBind(&req); err != nil {
