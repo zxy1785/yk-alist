@@ -91,6 +91,7 @@ func (d *HomeCloud) Link(ctx context.Context, file model.Obj, args model.LinkArg
 	// 创建Header 否则新上传文件无法使用
 	header := make(http.Header)
 	header.Add("Cookie", "H_TOKEN="+d.AccessToken)
+	header.Add("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1.1 Mobile/15E148 Safari/604.1")
 	link.Header = header
 
 	return link, nil
