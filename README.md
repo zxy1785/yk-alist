@@ -102,7 +102,7 @@ English | [中文](./README_cn.md)| [日本語](./README_ja.md) | [Contributing]
 
 ## Linux安装脚本
 ```
-curl -fsSL "https://mirror.ghproxy.com/https://raw.githubusercontent.com/ykxVK8yL5L/alist/main/linux.sh" | bash -s install
+curl -fsSL "https://raw.githubusercontent.com/ykxVK8yL5L/alist/main/linux.sh" | bash -s install
 ```
 
 ## Serv00
