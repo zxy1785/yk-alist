@@ -556,7 +556,8 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 		// Progress
 		p := driver.NewProgress(stream.GetSize(), up)
 
-		var partSize = getPartSize(stream.GetSize())
+		//var partSize = getPartSize(stream.GetSize())
+		var partSize = stream.GetSize()
 		part := (stream.GetSize() + partSize - 1) / partSize
 		if part == 0 {
 			part = 1
