@@ -511,7 +511,7 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 			"totalSize":    0, // 去除上传大小限制
 			"uploadContentList": []base.Json{{
 				"contentName": stream.GetName(),
-				"contentSize": 0, // 去除上传大小限制
+				"contentSize": stream.GetSize(), // 去除上传大小限制
 				// "digest": "5a3231986ce7a6b46e408612d385bafa"
 			}},
 			"parentCatalogID": dstDir.GetID(),
@@ -534,10 +534,10 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 				"catalogType":  3,
 				"manualRename": 2,
 				"fileCount":    1,
-				"totalSize":    0,
+				"totalSize":    stream.GetSize(),
 				"uploadContentList": []base.Json{{
 					"contentName": stream.GetName(),
-					"contentSize": 0,
+					"contentSize": stream.GetSize(),
 				}},
 				"seqNo": seqNo,
 				"commonAccountInfo": base.Json{
