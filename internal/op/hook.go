@@ -82,6 +82,10 @@ var settingItemHooks = map[string]SettingItemHook{
 		conf.SlicesMap[conf.IgnoreDirectLinkParams] = strings.Split(item.Value, ",")
 		return nil
 	},
+	conf.StorageGroups: func(item *model.SettingItem) error {
+		conf.SlicesMap[conf.StorageGroups] = strings.Split(item.Value, ",")
+		return nil
+	},
 }
 
 func RegisterSettingItemHook(key string, hook SettingItemHook) {

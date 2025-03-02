@@ -42,6 +42,7 @@ const (
 	FilenameCharMapping     = "filename_char_mapping"
 	ForwardDirectLinkParams = "forward_direct_link_params"
 	IgnoreDirectLinkParams  = "ignore_direct_link_params"
+	StorageGroups           = "storage_groups"
 	WebauthnLoginEnabled    = "webauthn_login_enabled"
 
 	// index

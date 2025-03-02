@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/alist-org/alist/v3/internal/conf"
-
 	"github.com/alist-org/alist/v3/internal/driver"
 	"github.com/pkg/errors"
 )
@@ -71,6 +70,10 @@ func getMainItems(config driver.Config) []driver.Item {
 	}, {
 		Name: "remark",
 		Type: conf.TypeText,
+	}, {
+		Name:    "group",
+		Type:    conf.TypeString,
+		Default: "未分组",
 	}}
 	if !config.NoCache {
 		items = append(items, driver.Item{
