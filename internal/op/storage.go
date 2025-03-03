@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alist-org/alist/v3/internal/conf"
 	"github.com/alist-org/alist/v3/internal/db"
 	"github.com/alist-org/alist/v3/internal/driver"
 	"github.com/alist-org/alist/v3/internal/model"
@@ -257,29 +258,53 @@ func UpdateStorage(ctx context.Context, storage model.Storage) error {
 		}
 		//同组Addition数据修改完毕
 
-		err = db.UpdateStorage(&storage)
-		if err != nil {
-			return errors.WithMessage(err, "failed update storage in database")
-		}
+		// err = db.UpdateStorage(&storage)
+		// if err != nil {
+		// 	return errors.WithMessage(err, "failed update storage in database")
+		// }
 		if storage.Disabled {
 			return nil
 		}
-		storageDriver, err := GetStorageByMountPath(oldStorage.MountPath)
 		if oldStorage.MountPath != storage.MountPath {
 			// mount path renamed, need to drop the storage
 			storagesMap.Delete(oldStorage.MountPath)
 		}
-		if err != nil {
-			return errors.WithMessage(err, "failed get storage driver")
-		}
-		err = storageDriver.Drop(ctx)
-		if err != nil {
-			return errors.Wrapf(err, "failed drop storage")
-		}
 
-		err = initStorage(ctx, storage, storageDriver)
-		go callStorageHooks("update", storageDriver)
-		log.Debugf("storage %+v is update", storageDriver)
+		storages, err := db.GetGroupStorages(storage.Group)
+		go func(storages []model.Storage) {
+			for _, storage := range storages {
+				storageDriver, err := GetStorageByMountPath(storage.MountPath)
+				if err != nil {
+					log.Errorf("failed get storage driver: %+v", err)
+					continue
+				}
+				// drop the storage in the driver
+				if err := storageDriver.Drop(context.Background()); err != nil {
+					log.Errorf("failed drop storage: %+v", err)
+					continue
+				}
+				if err := LoadStorage(context.Background(), storage); err != nil {
+					log.Errorf("failed get enabled storages: %+v", err)
+					continue
+				}
+				log.Infof("success load storage: [%s], driver: [%s]",
+					storage.MountPath, storage.Driver)
+			}
+			conf.StoragesLoaded = true
+		}(storages)
+
+		// storageDriver, err := GetStorageByMountPath(oldStorage.MountPath)
+		// if err != nil {
+		// 	return errors.WithMessage(err, "failed get storage driver")
+		// }
+		// err = storageDriver.Drop(ctx)
+		// if err != nil {
+		// 	return errors.Wrapf(err, "failed drop storage")
+		// }
+
+		// err = initStorage(ctx, storage, storageDriver)
+		// go callStorageHooks("update", storageDriver)
+		// log.Debugf("storage %+v is update", storageDriver)
 
 		return err
 	} else {
