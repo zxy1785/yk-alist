@@ -74,6 +74,11 @@ func getMainItems(config driver.Config) []driver.Item {
 		Name:    "group",
 		Type:    conf.TypeString,
 		Default: "未分组",
+	}, {
+		Name:    "sync_group",
+		Type:    conf.TypeBool,
+		Default: "false",
+		Help:    "同时修改同组内所有存储",
 	}}
 	if !config.NoCache {
 		items = append(items, driver.Item{

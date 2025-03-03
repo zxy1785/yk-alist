@@ -11,6 +11,7 @@ type Storage struct {
 	Status          string    `json:"status"`
 	Addition        string    `json:"addition" gorm:"type:text"` // Additional information, defined in the corresponding driver
 	Group           string    `json:"group"`
+	SyncGroup       bool      `json:"sync_group"` // 同步同组所有存储
 	Remark          string    `json:"remark"`
 	Modified        time.Time `json:"modified"`
 	Disabled        bool      `json:"disabled"` // if disabled

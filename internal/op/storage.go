@@ -216,32 +216,102 @@ func UpdateStorage(ctx context.Context, storage model.Storage) error {
 	if oldStorage.Driver != storage.Driver {
 		return errors.Errorf("driver cannot be changed")
 	}
-	storage.Modified = time.Now()
-	storage.MountPath = utils.FixAndCleanPath(storage.MountPath)
-	err = db.UpdateStorage(&storage)
-	if err != nil {
-		return errors.WithMessage(err, "failed update storage in database")
-	}
-	if storage.Disabled {
-		return nil
-	}
-	storageDriver, err := GetStorageByMountPath(oldStorage.MountPath)
-	if oldStorage.MountPath != storage.MountPath {
-		// mount path renamed, need to drop the storage
-		storagesMap.Delete(oldStorage.MountPath)
-	}
-	if err != nil {
-		return errors.WithMessage(err, "failed get storage driver")
-	}
-	err = storageDriver.Drop(ctx)
-	if err != nil {
-		return errors.Wrapf(err, "failed drop storage")
+
+	if storage.SyncGroup {
+		storage.Modified = time.Now()
+		storage.SyncGroup = false
+		storage.MountPath = utils.FixAndCleanPath(storage.MountPath)
+
+		// 对比新旧存储获取修改的部分对比字段为:order,cache_expiration,remark,group采取直接替换的办法，目前没有实现有需要的话再说
+		// 目前只修改addition序列化对比然后替换相关字段
+		var changeMap = make(map[string]interface{}) // 声明一个map用来记录变化数据
+		var storageMap map[string]interface{}        // 使用一个空接口表示可以是任意类型
+		storageAdditionStr := storage.Addition
+		err := json.Unmarshal([]byte(storageAdditionStr), &storageMap)
+		if err != nil {
+			return errors.Errorf("反序列化新存储失败")
+		}
+
+		var oldStorageMap map[string]interface{} // 使用一个空接口表示可以是任意类型
+		oldStorageAdditionStr := oldStorage.Addition
+		err = json.Unmarshal([]byte(oldStorageAdditionStr), &oldStorageMap)
+		if err != nil {
+			return errors.Errorf("反序列化旧存储失败")
+		}
+
+		for key, value := range storageMap {
+			oldValue := oldStorageMap[key]
+			if oldValue != value {
+				//changeMap[oldValue.(string)] = value.(string)
+				changeMap[key] = value
+			}
+		}
+
+		if len(changeMap) == 0 {
+			return errors.Errorf("Addition信息未发生变化，如需修改请关闭同步组存储选项！！！")
+		}
+
+		update_err := db.UpdateGroupStorages(storage.Group, changeMap)
+		if update_err != nil {
+			return errors.WithMessage(err, "更新同组存储数据失败")
+		}
+		//同组Addition数据修改完毕
+
+		err = db.UpdateStorage(&storage)
+		if err != nil {
+			return errors.WithMessage(err, "failed update storage in database")
+		}
+		if storage.Disabled {
+			return nil
+		}
+		storageDriver, err := GetStorageByMountPath(oldStorage.MountPath)
+		if oldStorage.MountPath != storage.MountPath {
+			// mount path renamed, need to drop the storage
+			storagesMap.Delete(oldStorage.MountPath)
+		}
+		if err != nil {
+			return errors.WithMessage(err, "failed get storage driver")
+		}
+		err = storageDriver.Drop(ctx)
+		if err != nil {
+			return errors.Wrapf(err, "failed drop storage")
+		}
+
+		err = initStorage(ctx, storage, storageDriver)
+		go callStorageHooks("update", storageDriver)
+		log.Debugf("storage %+v is update", storageDriver)
+
+		return err
+	} else {
+		storage.Modified = time.Now()
+		storage.MountPath = utils.FixAndCleanPath(storage.MountPath)
+		storage.SyncGroup = false
+		err = db.UpdateStorage(&storage)
+		if err != nil {
+			return errors.WithMessage(err, "failed update storage in database")
+		}
+		if storage.Disabled {
+			return nil
+		}
+		storageDriver, err := GetStorageByMountPath(oldStorage.MountPath)
+		if oldStorage.MountPath != storage.MountPath {
+			// mount path renamed, need to drop the storage
+			storagesMap.Delete(oldStorage.MountPath)
+		}
+		if err != nil {
+			return errors.WithMessage(err, "failed get storage driver")
+		}
+		err = storageDriver.Drop(ctx)
+		if err != nil {
+			return errors.Wrapf(err, "failed drop storage")
+		}
+
+		err = initStorage(ctx, storage, storageDriver)
+		go callStorageHooks("update", storageDriver)
+		log.Debugf("storage %+v is update", storageDriver)
+		return err
 	}
 
-	err = initStorage(ctx, storage, storageDriver)
-	go callStorageHooks("update", storageDriver)
-	log.Debugf("storage %+v is update", storageDriver)
-	return err
 }
 
 func DeleteStorageById(ctx context.Context, id uint) error {
