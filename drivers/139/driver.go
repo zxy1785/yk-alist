@@ -381,6 +381,20 @@ func getPartSize(size int64) int64 {
 	return 350 * MB
 }
 
+func retryRequest(req *http.Request) error{
+        res, err := base.HttpClient.Do(req)
+        if err != nil {
+		return err
+	}
+	_ = res.Body.Close()
+	log.Debugf("%+v", res)
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", res.StatusCode)
+	}
+	return nil
+}
+
+
 func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStreamer, up driver.UpdateProgress) error {
 	switch d.Addition.Type {
 	case MetaPersonalNew:
@@ -485,6 +499,10 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 			_ = res.Body.Close()
 			log.Debugf("%+v", res)
 			if res.StatusCode != http.StatusOK {
+				if res.StatusCode == http.StatusRequestTimeout {
+					log.Warn("服务器返回 408，尝试重试...")
+					retryRequest(req)
+			         }
 				return fmt.Errorf("unexpected status code: %d", res.StatusCode)
 			}
 
@@ -596,6 +614,10 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 			_ = res.Body.Close()
 			log.Debugf("%+v", res)
 			if res.StatusCode != http.StatusOK {
+				if res.StatusCode == http.StatusRequestTimeout {
+					log.Warn("服务器返回 408，尝试重试...")
+					retryRequest(req)
+			        }
 				return fmt.Errorf("unexpected status code: %d", res.StatusCode)
 			}
 		}
