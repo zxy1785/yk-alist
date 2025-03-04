@@ -501,9 +501,13 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 			if res.StatusCode != http.StatusOK {
 				if res.StatusCode == http.StatusRequestTimeout {
 					log.Warn("服务器返回 408，尝试重试...")
-					retryRequest(req)
-			         }
-				return fmt.Errorf("unexpected status code: %d", res.StatusCode)
+					err := retryRequest(req)
+					if err != nil {
+				              return err
+			                }
+			        }else{
+				    return fmt.Errorf("unexpected status code: %d", res.StatusCode)
+				}
 			}
 
 		}
@@ -616,9 +620,13 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 			if res.StatusCode != http.StatusOK {
 				if res.StatusCode == http.StatusRequestTimeout {
 					log.Warn("服务器返回 408，尝试重试...")
-					retryRequest(req)
-			        }
-				return fmt.Errorf("unexpected status code: %d", res.StatusCode)
+					err := retryRequest(req)
+					if err != nil {
+				              return err
+			                }
+			        }else{
+				    return fmt.Errorf("unexpected status code: %d", res.StatusCode)
+				}
 			}
 		}
 
