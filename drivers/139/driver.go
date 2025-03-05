@@ -381,18 +381,6 @@ func getPartSize(size int64) int64 {
 	return 350 * MB
 }
 
-func retryRequest(req *http.Request) error{
-        res, err := base.HttpClient.Do(req)
-        if err != nil {
-		return err
-	}
-	_ = res.Body.Close()
-	log.Debugf("%+v", res)
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code: %d", res.StatusCode)
-	}
-	return nil
-}
 
 
 func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStreamer, up driver.UpdateProgress) error {
@@ -480,36 +468,38 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 			limitReader := io.LimitReader(stream, byteSize)
 			// Update Progress
 			r := io.TeeReader(limitReader, p)
-			req, err := http.NewRequest("PUT", partInfo.UploadUrl, r)
-			if err != nil {
-				return err
-			}
-			req = req.WithContext(ctx)
-			req.Header.Set("Content-Type", "application/octet-stream")
-			req.Header.Set("Content-Length", fmt.Sprint(byteSize))
-			req.Header.Set("Origin", "https://yun.139.com")
-			req.Header.Set("Referer", "https://yun.139.com/")
-			req.ContentLength = byteSize
 
-			res, err := base.HttpClient.Do(req)
-			if err != nil {
-				return err
-			}
 
-			_ = res.Body.Close()
-			log.Debugf("%+v", res)
-			if res.StatusCode != http.StatusOK {
-				if res.StatusCode == http.StatusRequestTimeout {
-					log.Warn("服务器返回 408，尝试重试...")
-					err := retryRequest(req)
-					if err != nil {
-				              return err
-			                }
-			        }else{
-				    return fmt.Errorf("unexpected status code: %d", res.StatusCode)
+			retry := 1 // 只允许重试 1 次
+			for attempt := 0; attempt <= retry; attempt++ {
+				req, err := http.NewRequest("PUT", partInfo.UploadUrl, r)
+				if err != nil {
+					return err
 				}
-			}
+				req = req.WithContext(ctx)
+				req.Header.Set("Content-Type", "application/octet-stream")
+				req.Header.Set("Content-Length", fmt.Sprint(byteSize))
+				req.Header.Set("Origin", "https://yun.139.com")
+				req.Header.Set("Referer", "https://yun.139.com/")
+				req.ContentLength = byteSize
 
+				res, err := base.HttpClient.Do(req)
+				if err != nil {
+					return err
+				}
+
+				_ = res.Body.Close()
+				log.Debugf("%+v", res)
+				if res.StatusCode != http.StatusOK {
+					if res.StatusCode == http.StatusRequestTimeout && attempt < retry{
+						log.Warn("服务器返回 408，尝试重试...")
+						continue
+					}else{
+						return fmt.Errorf("unexpected status code: %d", res.StatusCode)
+					}
+				}
+				break
+			}
 		}
 
 		data = base.Json{
@@ -598,35 +588,39 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 			limitReader := io.LimitReader(stream, byteSize)
 			// Update Progress
 			r := io.TeeReader(limitReader, p)
-			req, err := http.NewRequest("POST", resp.Data.UploadResult.RedirectionURL, r)
-			if err != nil {
-				return err
-			}
 
-			req = req.WithContext(ctx)
-			req.Header.Set("Content-Type", "text/plain;name="+unicode(stream.GetName()))
-			req.Header.Set("contentSize", strconv.FormatInt(stream.GetSize(), 10))
-			req.Header.Set("range", fmt.Sprintf("bytes=%d-%d", start, start+byteSize-1))
-			req.Header.Set("uploadtaskID", resp.Data.UploadResult.UploadTaskID)
-			req.Header.Set("rangeType", "0")
-			req.ContentLength = byteSize
 
-			res, err := base.HttpClient.Do(req)
-			if err != nil {
-				return err
-			}
-			_ = res.Body.Close()
-			log.Debugf("%+v", res)
-			if res.StatusCode != http.StatusOK {
-				if res.StatusCode == http.StatusRequestTimeout {
-					log.Warn("服务器返回 408，尝试重试...")
-					err := retryRequest(req)
-					if err != nil {
-				              return err
-			                }
-			        }else{
-				    return fmt.Errorf("unexpected status code: %d", res.StatusCode)
+			retry := 1 // 只允许重试 1 次
+			for attempt := 0; attempt <= retry; attempt++ {
+
+				req, err := http.NewRequest("POST", resp.Data.UploadResult.RedirectionURL, r)
+				if err != nil {
+					return err
 				}
+
+				req = req.WithContext(ctx)
+				req.Header.Set("Content-Type", "text/plain;name="+unicode(stream.GetName()))
+				req.Header.Set("contentSize", strconv.FormatInt(stream.GetSize(), 10))
+				req.Header.Set("range", fmt.Sprintf("bytes=%d-%d", start, start+byteSize-1))
+				req.Header.Set("uploadtaskID", resp.Data.UploadResult.UploadTaskID)
+				req.Header.Set("rangeType", "0")
+				req.ContentLength = byteSize
+
+				res, err := base.HttpClient.Do(req)
+				if err != nil {
+					return err
+				}
+				_ = res.Body.Close()
+				log.Debugf("%+v", res)
+				if res.StatusCode != http.StatusOK {
+					if res.StatusCode == http.StatusRequestTimeout && attempt < retry {
+						log.Warn("服务器返回 408，尝试重试...")
+						continue
+					}else{
+						return fmt.Errorf("unexpected status code: %d", res.StatusCode)
+					}
+				}
+				break
 			}
 		}
 
