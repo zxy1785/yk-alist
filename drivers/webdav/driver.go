@@ -2,6 +2,7 @@ package webdav
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"os"
 	"path"
@@ -98,9 +99,34 @@ func (d *WebDav) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 		r.Header.Set("Content-Type", stream.GetMimetype())
 		r.ContentLength = stream.GetSize()
 	}
+
+	// 包装 stream 以跟踪进度
+	progressReader := &ProgressReader{
+		Reader:   stream,
+		Total:    stream.GetSize(),
+		Progress: up,
+	}
+
 	// TODO: support cancel
-	err := d.client.WriteStream(path.Join(dstDir.GetPath(), stream.GetName()), stream, 0644, callback)
+	err := d.client.WriteStream(path.Join(dstDir.GetPath(), stream.GetName()), progressReader, 0644, callback)
 	return err
+}
+
+// ProgressReader 用于跟踪读取进度
+type ProgressReader struct {
+	Reader   io.Reader
+	Total    int64
+	Progress driver.UpdateProgress
+	read     int64
+}
+
+func (pr *ProgressReader) Read(p []byte) (int, error) {
+	n, err := pr.Reader.Read(p)
+	if n > 0 {
+		pr.read += int64(n)
+		pr.Progress(float64(pr.read) / float64(pr.Total) * 100)
+	}
+	return n, err
 }
 
 var _ driver.Driver = (*WebDav)(nil)

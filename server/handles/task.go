@@ -17,6 +17,7 @@ type TaskInfo struct {
 	State    tache.State `json:"state"`
 	Status   string      `json:"status"`
 	Progress float64     `json:"progress"`
+	Size     int64       `json:"size"`
 	Error    string      `json:"error"`
 }
 
@@ -35,6 +36,7 @@ func getTaskInfo[T tache.TaskWithInfo](task T) TaskInfo {
 		Name:     task.GetName(),
 		State:    task.GetState(),
 		Status:   task.GetStatus(),
+		Size:     task.GetSize(),
 		Progress: progress,
 		Error:    errMsg,
 	}
