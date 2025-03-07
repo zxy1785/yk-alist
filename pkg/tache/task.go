@@ -34,6 +34,8 @@ type TaskBase interface {
 	GetRetry() (int, int)
 	// SetRetry sets the retry of the task
 	SetRetry(retry int, maxRetry int)
+	SetSize(size int64)
+	GetSize() int64
 	// Persist persists the task
 	Persist()
 	// SetPersist sets the persist function of the task

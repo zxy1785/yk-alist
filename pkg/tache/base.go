@@ -10,10 +10,20 @@ type Base struct {
 	MaxRetry int    `json:"max_retry"`
 
 	progress float64
+	size     int64
 	err      error
 	ctx      context.Context
 	cancel   context.CancelFunc
 	persist  func()
+}
+
+func (b *Base) SetSize(size int64) {
+	b.size = size
+	b.Persist()
+}
+
+func (b *Base) GetSize() int64 {
+	return b.size
 }
 
 func (b *Base) SetProgress(progress float64) {

@@ -28,6 +28,7 @@ type CopyTask struct {
 	dstStorage   driver.Driver `json:"-"`
 	SrcStorageMp string        `json:"src_storage_mp"`
 	DstStorageMp string        `json:"dst_storage_mp"`
+	Size         int64         `json:"size"`
 }
 
 func (t *CopyTask) GetName() string {
@@ -36,6 +37,14 @@ func (t *CopyTask) GetName() string {
 
 func (t *CopyTask) GetStatus() string {
 	return t.Status
+}
+
+func (t *CopyTask) SetSize(size int64) {
+	t.Size = size
+}
+
+func (t *CopyTask) GetSize() int64 {
+	return t.Size
 }
 
 func (t *CopyTask) OnFailed() {
@@ -52,6 +61,19 @@ func (t *CopyTask) OnSucceeded() {
 	if setting.GetBool(conf.NotifyEnabled) && setting.GetBool(conf.NotifyOnCopySucceeded) {
 		go op.Notify("文件复制结果", result)
 	}
+}
+
+func humanReadableSize(size int64) string {
+	const unit = 1024
+	if size < unit {
+		return fmt.Sprintf("%d B", size)
+	}
+	div, exp := int64(unit), 0
+	for n := size / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(size)/float64(div), "KMGTPE"[exp])
 }
 
 func (t *CopyTask) Run() error {
@@ -75,10 +97,15 @@ func (t *CopyTask) Run() error {
 		if srcObj.IsDir() {
 			return copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
 		}
+		var distSize int64
+		t.Size = srcObj.GetSize()
 		dst_path := stdpath.Join(t.DstStorageMp+t.DstDirPath, srcObj.GetName())
 		obj, err := get(context.Background(), dst_path)
-		if err != nil {
-			//文件不存在
+		if err == nil {
+			distSize = obj.GetSize()
+		}
+		if err != nil || distSize != t.Size {
+			//文件不存在或者大小不一样，直接复制
 			return copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
 		} else {
 			//文件已经存在，直接返回完成
@@ -183,6 +210,7 @@ func copyBetween2Storages(t *CopyTask, srcStorage, dstStorage driver.Driver, Src
 }
 
 func copyFileBetween2Storages(tsk *CopyTask, srcStorage, dstStorage driver.Driver, srcFilePath, DstDirPath string) error {
+	tsk.Status = fmt.Sprintf("getting src object (%s)", humanReadableSize(tsk.Size))
 	srcFile, err := op.Get(tsk.Ctx(), srcStorage, srcFilePath)
 	if err != nil {
 		return errors.WithMessagef(err, "failed get src [%s] file", srcFilePath)
