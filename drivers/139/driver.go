@@ -465,13 +465,11 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 				byteSize = partSize
 			}
 
-			limitReader := io.LimitReader(stream, byteSize)
-			// Update Progress
-			r := io.TeeReader(limitReader, p)
-
-
 			retry := 1 // 只允许重试 1 次
 			for attempt := 0; attempt <= retry; attempt++ {
+				limitReader := io.LimitReader(stream, byteSize)
+				// Update Progress
+				r := io.TeeReader(limitReader, p)
 				req, err := http.NewRequest("PUT", partInfo.UploadUrl, r)
 				if err != nil {
 					return err
@@ -585,14 +583,11 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 				byteSize = partSize
 			}
 
-			limitReader := io.LimitReader(stream, byteSize)
-			// Update Progress
-			r := io.TeeReader(limitReader, p)
-
-
 			retry := 1 // 只允许重试 1 次
 			for attempt := 0; attempt <= retry; attempt++ {
-
+				limitReader := io.LimitReader(stream, byteSize)
+				// Update Progress
+				r := io.TeeReader(limitReader, p)
 				req, err := http.NewRequest("POST", resp.Data.UploadResult.RedirectionURL, r)
 				if err != nil {
 					return err
