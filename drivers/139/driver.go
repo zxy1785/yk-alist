@@ -465,7 +465,7 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 				byteSize = partSize
 			}
 
-			retry := 1 // 只允许重试 1 次
+			retry := 2 // 只允许重试 2 次
 			for attempt := 0; attempt <= retry; attempt++ {
 				limitReader := io.LimitReader(stream, byteSize)
 				// Update Progress
@@ -583,7 +583,7 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 				byteSize = partSize
 			}
 
-			retry := 1 // 只允许重试 1 次
+			retry := 2 // 只允许重试 2次
 			for attempt := 0; attempt <= retry; attempt++ {
 				limitReader := io.LimitReader(stream, byteSize)
 				// Update Progress
