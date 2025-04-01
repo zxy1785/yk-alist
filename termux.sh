@@ -2,7 +2,7 @@
 termux-change-repo
 pkg update
 echo '安装依赖'
-pkg instal termux-services tsu -y
+pkg instal termux-services tsu vim -y
 apt install -y wget dpkg
 echo '安装Alist'
 wget https://ghfast.top/https://github.com/ykxVK8yL5L/termux-packages/releases/latest/download/alist_1_aarch64.deb -O alist.deb
