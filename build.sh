@@ -260,11 +260,17 @@ if [ "$1" = "dev" ]; then
     BuildDocker
   elif [ "$2" = "docker-multiplatform" ]; then
       BuildDockerMultiplatform
+  elif [ "$2" = "web" ]; then
+    echo "web only"
   else
     BuildDev
   fi
-elif [ "$1" = "release" ]; then
-  FetchWebRelease
+elif [ "$1" = "release" -o "$1" = "beta" ]; then
+  if [ "$1" = "beta" ]; then
+    FetchWebDev
+  else
+    FetchWebRelease
+  fi
   if [ "$2" = "docker" ]; then
     BuildDocker
   elif [ "$2" = "docker-multiplatform" ]; then
@@ -278,10 +284,21 @@ elif [ "$1" = "release" ]; then
   elif [ "$2" = "android" ]; then
     BuildReleaseAndroid
     MakeRelease "md5-android.txt"
+  elif [ "$2" = "freebsd" ]; then
+    BuildReleaseFreeBSD
+    MakeRelease "md5-freebsd.txt"
+  elif [ "$2" = "web" ]; then
+    echo "web only"
   else
     BuildRelease
     MakeRelease "md5.txt"
   fi
+elif [ "$1" = "prepare" ]; then
+  if [ "$2" = "docker-multiplatform" ]; then
+    PrepareBuildDockerMusl
+  fi
+elif [ "$1" = "zip" ]; then
+  MakeRelease "$2".txt
 else
   echo -e "Parameter error"
 fi
