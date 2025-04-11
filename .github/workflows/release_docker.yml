@@ -17,11 +17,7 @@ env:
   IMAGE_PUSH: true
   IMAGE_IS_PROD: true
   IMAGE_TAGS_BETA: |
-    type=schedule
-    type=ref,event=branch
     type=ref,event=tag
-    type=ref,event=pr
-    type=raw,value=beta,enable={{is_default_branch}}
 
 jobs:
   build_binary:
