@@ -91,11 +91,23 @@ PrepareBuildDocker() {
   go mod download
 }
 
+
 BuildDocker() {
-  PrepareBuildDocker
   go build -o ./bin/alist -ldflags="$ldflags" -tags=jsoniter .
 }
 
+PrepareBuildDockerMusl() {
+  mkdir -p build/musl-libs
+  BASE="https://musl.cc/"
+  FILES=(x86_64-linux-musl-cross aarch64-linux-musl-cross i486-linux-musl-cross s390x-linux-musl-cross armv6-linux-musleabihf-cross armv7l-linux-musleabihf-cross riscv64-linux-musl-cross powerpc64le-linux-musl-cross)
+  for i in "${FILES[@]}"; do
+    url="${BASE}${i}.tgz"
+    lib_tgz="build/${i}.tgz"
+    curl -L -o "${lib_tgz}" "${url}"
+    tar xf "${lib_tgz}" --strip-components 1 -C build/musl-libs
+    rm -f "${lib_tgz}"
+  done
+}
 BuildDockerMultiplatform() {
   go mod download
   # run PrepareBuildDockerMusl before build
