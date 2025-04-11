@@ -29,10 +29,10 @@ ldflags="\
 
 FetchWebDev() {
   curl -L https://github.com/ykxVK8yL5L/alist-web/releases/latest/download/dist.tar.gz -o web-dist-dev.tar.gz
-  tar -zxvf web-dist-dev.tar.gz
+  tar -zxvf dist.tar.gz
   rm -rf public/dist
-  mv -f web-dist-dev/dist public
-  rm -rf web-dist-dev web-dist-dev.tar.gz
+  mv -f dist public
+  rm -rf dist.tar.gz
 }
 
 FetchWebRelease() {
