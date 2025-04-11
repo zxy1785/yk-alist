@@ -1,13 +1,16 @@
 appName="alist"
 builtAt="$(date +'%F %T %z')"
-goVersion=$(go version | sed 's/go version //')
 gitAuthor="Xhofe <i@nn.ci>"
 gitCommit=$(git log --pretty=format:"%h" -1)
 
 if [ "$1" = "dev" ]; then
   version="dev"
   webVersion="dev"
+elif [ "$1" = "beta" ]; then
+  version="beta"
+  webVersion="dev"
 else
+  git tag -d beta
   version=$(git describe --abbrev=0 --tags)
   webVersion=$(wget -qO- -t1 -T2 "https://api.github.com/repos/ykxVK8yL5L/alist-web/releases/latest" | grep "tag_name" | head -n 1 | awk -F ":" '{print $2}' | sed 's/\"//g;s/,//g;s/ //g')
 fi
@@ -18,7 +21,6 @@ echo "frontend version: $webVersion"
 ldflags="\
 -w -s \
 -X 'github.com/ykxVK8yL5L/alist/v3/internal/conf.BuiltAt=$builtAt' \
--X 'github.com/ykxVK8yL5L/alist/v3/internal/conf.GoVersion=$goVersion' \
 -X 'github.com/ykxVK8yL5L/alist/v3/internal/conf.GitAuthor=$gitAuthor' \
 -X 'github.com/ykxVK8yL5L/alist/v3/internal/conf.GitCommit=$gitCommit' \
 -X 'github.com/ykxVK8yL5L/alist/v3/internal/conf.Version=$version' \
@@ -34,7 +36,7 @@ FetchWebDev() {
 }
 
 FetchWebRelease() {
-  curl -L https://github.com/ykxVK8yL5L/alist-web/releases/latest/download/dist.tar.gz -o dist.tar.gz
+  curl -L https://github.com/ykxVK8yL5L/alist-web/releases/latest/download/dist.tar.gz -o web-dist-dev.tar.gz
   tar -zxvf dist.tar.gz
   rm -rf public/dist
   mv -f dist public
@@ -85,13 +87,6 @@ BuildDev() {
   cat md5.txt
 }
 
-PrepareBuildDocker() {
-  echo "replace github.com/mattn/go-sqlite3 => github.com/leso-kn/go-sqlite3 v0.0.0-20230710125852-03158dc838ed" >>go.mod
-  go get gorm.io/driver/sqlite@v1.4.4
-  go mod download
-}
-
-
 BuildDocker() {
   go build -o ./bin/alist -ldflags="$ldflags" -tags=jsoniter .
 }
@@ -108,8 +103,10 @@ PrepareBuildDockerMusl() {
     rm -f "${lib_tgz}"
   done
 }
+
 BuildDockerMultiplatform() {
   go mod download
+
   # run PrepareBuildDockerMusl before build
   export PATH=$PATH:$PWD/build/musl-libs/bin
 
@@ -237,6 +234,29 @@ BuildReleaseAndroid() {
   done
 }
 
+BuildReleaseFreeBSD() {
+  rm -rf .git/
+  mkdir -p "build/freebsd"
+  OS_ARCHES=(amd64 arm64 i386)
+  GO_ARCHES=(amd64 arm64 386)
+  CGO_ARGS=(x86_64-unknown-freebsd14.1 aarch64-unknown-freebsd14.1 i386-unknown-freebsd14.1)
+  for i in "${!OS_ARCHES[@]}"; do
+    os_arch=${OS_ARCHES[$i]}
+    cgo_cc="clang --target=${CGO_ARGS[$i]} --sysroot=/opt/freebsd/${os_arch}"
+    echo building for freebsd-${os_arch}
+    sudo mkdir -p "/opt/freebsd/${os_arch}"
+    wget -q https://download.freebsd.org/releases/${os_arch}/14.1-RELEASE/base.txz
+    sudo tar -xf ./base.txz -C /opt/freebsd/${os_arch}
+    rm base.txz
+    export GOOS=freebsd
+    export GOARCH=${GO_ARCHES[$i]}
+    export CC=${cgo_cc}
+    export CGO_ENABLED=1
+    export CGO_LDFLAGS="-fuse-ld=lld"
+    go build -o ./build/$appName-freebsd-$os_arch -ldflags="$ldflags" -tags=jsoniter .
+  done
+}
+
 MakeRelease() {
   cd build
   mkdir compress
@@ -251,6 +271,11 @@ MakeRelease() {
     rm -f alist
   done
   for i in $(find . -type f -name "$appName-darwin-*"); do
+    cp "$i" alist
+    tar -czvf compress/"$i".tar.gz alist
+    rm -f alist
+  done
+  for i in $(find . -type f -name "$appName-freebsd-*"); do
     cp "$i" alist
     tar -czvf compress/"$i".tar.gz alist
     rm -f alist
