@@ -109,7 +109,7 @@ curl -fsSL "https://raw.githubusercontent.com/ykxVK8yL5L/alist/main/linux.sh" | 
 ```
 wget -O alist-freebsd.sh https://raw.githubusercontent.com/ykxVK8yL5L/alist/main/serv00.sh && sh alist-freebsd.sh
 ```
-## Android可适用Termux运行 项目地址如下：
+## Android可使用Termux运行 项目地址如下：
 https://github.com/ykxVK8yL5L/termux-packages
 
 ## Docker 配置文件路径 /opt/alist
