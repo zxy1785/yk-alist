@@ -26,7 +26,14 @@ jobs:
         run: |
           bash build.sh release freebsd
 
-      - name: Upload assets
-        uses: softprops/action-gh-release@v2
+    #   - name: Upload assets
+    #     uses: softprops/action-gh-release@v2
+    #     with:
+    #       files: build/compress/*
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@main
         with:
-          files: build/compress/*
+            name: alist-freebsd
+            path: |
+                build/compress/*
