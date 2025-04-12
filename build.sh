@@ -327,7 +327,7 @@ elif [ "$1" = "release" -o "$1" = "beta" ]; then
   elif [ "$2" = "web" ]; then
     echo "web only"
   else
-    BuildDev
+    #BuildDev
     BuildRelease
     MakeRelease "md5.txt"
   fi
