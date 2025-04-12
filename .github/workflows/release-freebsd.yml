@@ -26,11 +26,6 @@ jobs:
         run: |
           bash build.sh release freebsd
 
-    #   - name: Upload assets
-    #     uses: softprops/action-gh-release@v2
-    #     with:
-    #       files: build/compress/*
-
       - name: Upload artifact
         uses: actions/upload-artifact@main
         with:
@@ -49,9 +44,9 @@ jobs:
         with:
             tag_name: ${{ steps.tag.outputs.release_tag }}
             files: |
-                alist/alist-freebsd.tar.gz
-                
-       - name: Delete workflow runs
+                build/compress/*
+      
+      - name: Delete workflow runs
         uses: Mattraks/delete-workflow-runs@v2
         with:
             token: ${{ secrets.MY_TOKEN }}
