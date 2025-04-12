@@ -18,4 +18,24 @@ ldflags="\
 -X 'github.com/alist-org/alist/v3/internal/conf.WebVersion=$webVersion' \
 "
 
+
+OS_ARCHES=(amd64 arm64 i386)
+GO_ARCHES=(amd64 arm64 386)
+CGO_ARGS=(x86_64-unknown-freebsd14.1 aarch64-unknown-freebsd14.1 i386-unknown-freebsd14.1)
+
+
+os_arch=${OS_ARCHES[0]}
+cgo_cc="clang --target=${CGO_ARGS[0]} --sysroot=/opt/freebsd/${os_arch}"
+echo building for freebsd-${os_arch}
+sudo mkdir -p "/opt/freebsd/${os_arch}"
+wget -q https://download.freebsd.org/releases/${os_arch}/14.1-RELEASE/base.txz
+sudo tar -xf ./base.txz -C /opt/freebsd/${os_arch}
+rm base.txz
+export GOOS=freebsd
+export GOARCH=${GO_ARCHES[0]}
+export CC=${cgo_cc}
+export CGO_ENABLED=1
+export CGO_LDFLAGS="-fuse-ld=lld"
+
+
 go build -ldflags="$ldflags" -tags=jsoniter .
