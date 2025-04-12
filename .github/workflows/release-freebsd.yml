@@ -37,3 +37,24 @@ jobs:
             name: alist-freebsd
             path: |
                 build/compress/*
+    
+      - name: Generate release tag
+        id: tag
+        run: echo "release_tag=latest" >> $GITHUB_OUTPUT
+
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        env:
+            GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
+        with:
+            tag_name: ${{ steps.tag.outputs.release_tag }}
+            files: |
+                alist/alist-freebsd.tar.gz
+                
+       - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+            token: ${{ secrets.MY_TOKEN }}
+            repository: ${{ github.repository }}
+            retain_days: 0
+            keep_minimum_runs: 0
