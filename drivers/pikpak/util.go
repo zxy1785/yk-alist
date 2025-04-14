@@ -6,13 +6,6 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"github.com/alist-org/alist/v3/internal/driver"
-	"github.com/alist-org/alist/v3/internal/model"
-	"github.com/alist-org/alist/v3/internal/op"
-	"github.com/alist-org/alist/v3/pkg/utils"
-	"github.com/aliyun/aliyun-oss-go-sdk/oss"
-	jsoniter "github.com/json-iterator/go"
-	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -22,38 +15,43 @@ import (
 	"time"
 
 	"github.com/alist-org/alist/v3/drivers/base"
+	"github.com/alist-org/alist/v3/internal/driver"
+	"github.com/alist-org/alist/v3/internal/model"
+	"github.com/alist-org/alist/v3/internal/op"
+	"github.com/alist-org/alist/v3/pkg/utils"
+	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/go-resty/resty/v2"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/pkg/errors"
 )
 
 var AndroidAlgorithms = []string{
-	"7xOq4Z8s",
-	"QE9/9+IQco",
-	"WdX5J9CPLZp",
-	"NmQ5qFAXqH3w984cYhMeC5TJR8j",
-	"cc44M+l7GDhav",
-	"KxGjo/wHB+Yx8Lf7kMP+/m9I+",
-	"wla81BUVSmDkctHDpUT",
-	"c6wMr1sm1WxiR3i8LDAm3W",
-	"hRLrEQCFNYi0PFPV",
-	"o1J41zIraDtJPNuhBu7Ifb/q3",
-	"U",
-	"RrbZvV0CTu3gaZJ56PVKki4IeP",
-	"NNuRbLckJqUp1Do0YlrKCUP",
-	"UUwnBbipMTvInA0U0E9",
-	"VzGc",
+	"SOP04dGzk0TNO7t7t9ekDbAmx+eq0OI1ovEx",
+	"nVBjhYiND4hZ2NCGyV5beamIr7k6ifAsAbl",
+	"Ddjpt5B/Cit6EDq2a6cXgxY9lkEIOw4yC1GDF28KrA",
+	"VVCogcmSNIVvgV6U+AochorydiSymi68YVNGiz",
+	"u5ujk5sM62gpJOsB/1Gu/zsfgfZO",
+	"dXYIiBOAHZgzSruaQ2Nhrqc2im",
+	"z5jUTBSIpBN9g4qSJGlidNAutX6",
+	"KJE2oveZ34du/g1tiimm",
 }
 
 var WebAlgorithms = []string{
-	"fyZ4+p77W1U4zcWBUwefAIFhFxvADWtT1wzolCxhg9q7etmGUjXr",
-	"uSUX02HYJ1IkyLdhINEFcCf7l2",
-	"iWt97bqD/qvjIaPXB2Ja5rsBWtQtBZZmaHH2rMR41",
-	"3binT1s/5a1pu3fGsN",
-	"8YCCU+AIr7pg+yd7CkQEY16lDMwi8Rh4WNp5",
-	"DYS3StqnAEKdGddRP8CJrxUSFh",
-	"crquW+4",
-	"ryKqvW9B9hly+JAymXCIfag5Z",
-	"Hr08T/NDTX1oSJfHk90c",
-	"i",
+	"C9qPpZLN8ucRTaTiUMWYS9cQvWOE",
+	"+r6CQVxjzJV6LCV",
+	"F",
+	"pFJRC",
+	"9WXYIDGrwTCz2OiVlgZa90qpECPD6olt",
+	"/750aCr4lm/Sly/c",
+	"RB+DT/gZCrbV",
+	"",
+	"CyLsf7hdkIRxRm215hl",
+	"7xHvLi2tOYP0Y92b",
+	"ZGTXXxu8E/MIWaEDB+Sm/",
+	"1UI3",
+	"E7fP5Pfijd+7K+t6Tg/NhuLq0eEUVChpJSkrKxpO",
+	"ihtqpG6FMt65+Xk+tWUH2",
+	"NhXXU9rg4XXdzo7u5o",
 }
 
 var PCAlgorithms = []string{
@@ -78,17 +76,17 @@ const (
 const (
 	AndroidClientID      = "YNxT9w7GMdWvEOKa"
 	AndroidClientSecret  = "dbw2OtmVEeuUvIptb1Coyg"
-	AndroidClientVersion = "1.49.3"
+	AndroidClientVersion = "1.53.2"
 	AndroidPackageName   = "com.pikcloud.pikpak"
-	AndroidSdkVersion    = "2.0.4.204101"
+	AndroidSdkVersion    = "2.0.6.206003"
 	WebClientID          = "YUMx5nI8ZU8Ap8pm"
 	WebClientSecret      = "dbw2OtmVEeuUvIptb1Coyg"
-	WebClientVersion     = "undefined"
-	WebPackageName       = "drive.mypikpak.com"
+	WebClientVersion     = "2.0.0"
+	WebPackageName       = "mypikpak.com"
 	WebSdkVersion        = "8.0.3"
 	PCClientID           = "YvtoWO6GNHiuCl7x"
 	PCClientSecret       = "1NIH5R1IEe2pAxZE3hv3uA"
-	PCClientVersion      = "undefined" // 2.5.6.4831
+	PCClientVersion      = "undefined" // 2.6.11.4955
 	PCPackageName        = "mypikpak.com"
 	PCSdkVersion         = "8.0.3"
 )
@@ -211,6 +209,49 @@ func (d *PikPak) request(url string, method string, callback base.ReqCallback, r
 	default:
 		return nil, errors.New(e.Error())
 	}
+}
+
+func (d *PikPak) requestWithCaptchaToken(url string, method string, callback base.ReqCallback, resp interface{}) ([]byte, error) {
+
+	if err := d.RefreshCaptchaTokenAtLogin(GetAction(method, url), d.Common.UserID); err != nil {
+		return nil, err
+	}
+
+	data, err := d.request(url, method, func(req *resty.Request) {
+		req.SetHeaders(map[string]string{
+			"User-Agent":      d.GetUserAgent(),
+			"X-Device-ID":     d.GetDeviceID(),
+			"X-Captcha-Token": d.GetCaptchaToken(),
+		})
+		if callback != nil {
+			callback(req)
+		}
+	}, resp)
+
+	errResp, ok := err.(*ErrResp)
+
+	if !ok {
+		return nil, err
+	}
+
+	switch errResp.ErrorCode {
+	case 0:
+		return data, nil
+	//case 4122, 4121, 10, 16:
+	//	if d.refreshTokenFunc != nil {
+	//		if err = xc.refreshTokenFunc(); err == nil {
+	//			break
+	//		}
+	//	}
+	//	return nil, err
+	case 9: // 验证码token过期
+		if err = d.RefreshCaptchaTokenAtLogin(GetAction(method, url), d.Common.UserID); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, err
+	}
+	return d.request(url, method, callback, resp)
 }
 
 func (d *PikPak) getFiles(id string) ([]File, error) {
@@ -433,7 +474,6 @@ func (d *PikPak) UploadByOSS(params *S3Params, stream model.FileStreamer, up dri
 	}
 	return nil
 }
-
 func (d *PikPak) UploadByMultipart(params *S3Params, fileSize int64, stream model.FileStreamer, up driver.UpdateProgress) error {
 	var (
 		chunks    []oss.FileChunk

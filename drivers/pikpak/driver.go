@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
 	"github.com/alist-org/alist/v3/drivers/base"
 	"github.com/alist-org/alist/v3/internal/driver"
 	"github.com/alist-org/alist/v3/internal/model"
@@ -12,9 +16,6 @@ import (
 	hash_extend "github.com/alist-org/alist/v3/pkg/utils/hash"
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
-	"net/http"
-	"strconv"
-	"strings"
 )
 
 type PikPak struct {
@@ -69,7 +70,7 @@ func (d *PikPak) Init(ctx context.Context) (err error) {
 		d.ClientVersion = PCClientVersion
 		d.PackageName = PCPackageName
 		d.Algorithms = PCAlgorithms
-		d.UserAgent = "MainWindow Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) PikPak/2.5.6.4831 Chrome/100.0.4896.160 Electron/18.3.15 Safari/537.36"
+		d.UserAgent = "MainWindow Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) PikPak/2.6.11.4955 Chrome/100.0.4896.160 Electron/18.3.15 Safari/537.36"
 	}
 
 	if d.Addition.CaptchaToken != "" && d.Addition.RefreshToken == "" {
@@ -201,7 +202,8 @@ func (d *PikPak) Copy(ctx context.Context, srcObj, dstDir model.Obj) error {
 }
 
 func (d *PikPak) Remove(ctx context.Context, obj model.Obj) error {
-	_, err := d.request("https://api-drive.mypikpak.net/drive/v1/files:batchTrash", http.MethodPost, func(req *resty.Request) {
+	//https://api-drive.mypikpak.com/drive/v1/files:batchTrash
+	_, err := d.request("https://api-drive.mypikpak.net/drive/v1/files:batchDelete", http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"ids": []string{obj.GetID()},
 		})
@@ -262,28 +264,38 @@ func (d *PikPak) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 }
 
 // 离线下载文件
-func (d *PikPak) OfflineDownload(ctx context.Context, fileUrl string, parentDir model.Obj, fileName string) (*OfflineTask, error) {
+func (d *PikPak) Offline(ctx context.Context, args model.OtherArgs) (interface{}, error) {
 	requestBody := base.Json{
 		"kind":        "drive#file",
-		"name":        fileName,
+		"name":        "",
 		"upload_type": "UPLOAD_TYPE_URL",
 		"url": base.Json{
-			"url": fileUrl,
+			"url": args.Data,
 		},
-		"parent_id":   parentDir.GetID(),
+		"parent_id":   args.Obj.GetID(),
 		"folder_type": "",
 	}
 
-	var resp OfflineDownloadResp
-	_, err := d.request("https://api-drive.mypikpak.net/drive/v1/files", http.MethodPost, func(req *resty.Request) {
-		req.SetBody(requestBody)
-	}, &resp)
-
+	_, err := d.requestWithCaptchaToken("https://api-drive.mypikpak.com/drive/v1/files",
+		http.MethodPost, func(r *resty.Request) {
+			r.SetContext(ctx)
+			r.SetBody(requestBody)
+		}, nil)
 	if err != nil {
 		return nil, err
 	}
+	return "ok", nil
 
-	return &resp.Task, err
+	// var resp OfflineDownloadResp
+	// _, err := d.request("https://api-drive.mypikpak.net/drive/v1/files", http.MethodPost, func(req *resty.Request) {
+	// 	req.SetBody(requestBody)
+	// }, &resp)
+
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	//return &resp.Task, err
 }
 
 /*
