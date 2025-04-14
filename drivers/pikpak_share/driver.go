@@ -36,6 +36,10 @@ func (d *PikPakShare) Init(ctx context.Context) error {
 				d.Common.CaptchaToken = token
 				op.MustSaveDriverStorage(d)
 			},
+			UseProxy: d.Addition.UseProxy,
+			ProxyUrl: d.Addition.ProxyUrl,
+		}
+	}
 		}
 	}
 
@@ -120,6 +124,16 @@ func (d *PikPakShare) Link(ctx context.Context, file model.Obj, args model.LinkA
 		}
 
 	}
+
+	if d.Addition.UseProxy {
+		if strings.HasSuffix(d.Addition.ProxyUrl, "/") {
+			downloadUrl = d.Addition.ProxyUrl + downloadUrl
+		} else {
+			downloadUrl = d.Addition.ProxyUrl + "/" + downloadUrl
+		}
+
+	}
+
 
 	return &model.Link{
 		URL: downloadUrl,
