@@ -85,6 +85,16 @@ func (d *PikPakShare) request(url string, method string, callback base.ReqCallba
 		"X-Captcha-Token": d.GetCaptchaToken(),
 	})
 
+	if d.Addition.UseProxy {
+		if strings.HasSuffix(d.Addition.ProxyUrl, "/") {
+			url = d.Addition.ProxyUrl + url
+		} else {
+			url = d.Addition.ProxyUrl + "/" + url
+		}
+
+	}
+
+
 	if callback != nil {
 		callback(req)
 	}
@@ -188,6 +198,10 @@ type Common struct {
 	UserAgent     string
 	// 验证码token刷新成功回调
 	RefreshCTokenCk func(token string)
+	//代理设置
+	UseProxy bool
+	//代理地址
+	ProxyUrl string
 }
 
 func (c *Common) SetUserAgent(userAgent string) {
