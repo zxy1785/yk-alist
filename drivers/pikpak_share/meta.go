@@ -12,6 +12,10 @@ type Addition struct {
 	Platform              string `json:"platform" default:"web" required:"true" type:"select" options:"android,web,pc"`
 	DeviceID              string `json:"device_id"  required:"false" default:""`
 	UseTransCodingAddress bool   `json:"use_transcoding_address" required:"true" default:"false"`
+	//是否使用代理
+	UseProxy bool `json:"use_proxy"`
+	//下代理地址
+	ProxyUrl string `json:"proxy_url" default:""`
 }
 
 var config = driver.Config{
