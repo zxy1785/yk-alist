@@ -40,8 +40,7 @@ func (d *PikPakShare) Init(ctx context.Context) error {
 			ProxyUrl: d.Addition.ProxyUrl,
 		}
 	}
-		}
-	}
+		
 
 	if d.Addition.DeviceID != "" {
 		d.SetDeviceID(d.Addition.DeviceID)
