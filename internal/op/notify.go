@@ -374,7 +374,7 @@ func (e SendNotifyPlatform) Webhook(body string, title string, content string) (
 	}
 	targetBody := strings.ReplaceAll(strings.ReplaceAll(webhookBodyString, "$title", title), "$content", content)
 	rbodys := make(map[string]string)
-	if len(webhook.WebhookHeaders) > 2 {
+	if len(targetBody) > 2 {
 		// 按换行符分割字符串
 		headerLines := strings.Split(targetBody, "\n")
 		// 遍历每一行
